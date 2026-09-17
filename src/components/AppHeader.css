@@ -1,0 +1,174 @@
+/* ── Bell button ───────────────────────────────────────── */
+.ah-bell-wrapper {
+  position: relative;
+}
+
+.ah-bell-btn {
+  position: relative;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 7px;
+  border-radius: 8px;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.ah-bell-btn:hover {
+  background: #f3f4f6;
+  color: #1a1a2e;
+}
+
+/* ── Red dot badge ─────────────────────────────────────── */
+.ah-dot {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  min-width: 17px;
+  height: 17px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 2px solid #fff;
+  animation: dot-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes dot-pop {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.35); }
+  100% { transform: scale(1);  opacity: 1; }
+}
+
+/* ── Dropdown panel ────────────────────────────────────── */
+.ah-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 310px;
+  background: #ffffff;
+  border: 0.5px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06);
+  z-index: 9999;
+  overflow: hidden;
+  animation: slide-in 0.22s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(-10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+/* ── Dropdown header ───────────────────────────────────── */
+.ah-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a2e;
+  border-bottom: 0.5px solid #f3f4f6;
+}
+
+.ah-badge {
+  background: #fef2f2;
+  color: #ef4444;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+/* ── Draft list ────────────────────────────────────────── */
+.ah-draft-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.ah-draft-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.12s;
+  animation: item-slide 0.25s ease both;
+}
+.ah-draft-item:hover {
+  background: #f9fafb;
+}
+
+@keyframes item-slide {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.ah-draft-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #fef3c7;
+  color: #d97706;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ah-draft-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ah-draft-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1a1a2e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ah-draft-meta {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+.ah-draft-arrow {
+  font-size: 14px;
+  color: #d1d5db;
+  transition: color 0.12s, transform 0.15s;
+}
+.ah-draft-item:hover .ah-draft-arrow {
+  color: #6366f1;
+  transform: translateX(4px);
+}
+
+/* ── Footer + empty ────────────────────────────────────── */
+.ah-dropdown-footer {
+  padding: 8px 16px;
+  font-size: 11px;
+  color: #9ca3af;
+  border-top: 0.5px solid #f3f4f6;
+  text-align: center;
+}
+
+.ah-empty {
+  padding: 24px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: #9ca3af;
+}

@@ -1,0 +1,995 @@
+@use "@coreui/coreui/scss/coreui" as * with (
+  $enable-deprecation-messages: false,
+);
+
+@use "@coreui/chartjs/scss/coreui-chartjs";
+@use "vendors/simplebar";
+
+
+/* =========================================================
+   ROOT
+========================================================= */
+
+:root {
+  color-scheme: light !important;
+}
+
+
+/* =========================================================
+   BODY
+========================================================= */
+
+body {
+  background-color: var(--cui-tertiary-bg);
+}
+
+
+/* =========================================================
+   WRAPPER
+========================================================= */
+
+.wrapper {
+  width: 100%;
+
+  padding-inline: var(--cui-sidebar-occupy-start, 0)
+    var(--cui-sidebar-occupy-end, 0);
+
+  will-change: auto;
+
+  @include transition(padding 0.15s);
+}
+
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+.header > .container-fluid,
+.sidebar-header {
+  min-height: calc(4rem + 1px);
+}
+
+.sidebar-brand-full {
+  margin-left: 3px;
+}
+
+.sidebar-header {
+  .nav-underline-border {
+    --cui-nav-underline-border-link-padding-x: 1rem;
+    --cui-nav-underline-border-gap: 0;
+  }
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    min-height: calc(4rem + 1px);
+  }
+}
+
+.sidebar-toggler {
+  margin-inline-start: auto;
+}
+
+.sidebar-narrow,
+.sidebar-narrow-unfoldable:not(:hover) {
+  .sidebar-toggler {
+    margin-inline-end: auto;
+  }
+}
+
+.header > .container-fluid + .container-fluid {
+  min-height: 3rem;
+}
+
+
+/* =========================================================
+   FOOTER
+========================================================= */
+
+.footer {
+  min-height: calc(3rem + 1px);
+}
+
+
+/* =========================================================
+   DARK MODE
+========================================================= */
+
+@include color-mode(dark) {
+  body {
+    background-color: var(--cui-dark-bg-subtle);
+  }
+
+  .footer {
+    --cui-footer-bg: var(--cui-body-bg);
+  }
+}
+
+
+/* =========================================================
+   CUSTOM SIDEBAR
+========================================================= */
+
+.custom-sidebar {
+  width: 260px !important;
+
+  background: #f2f3fe !important;
+
+  border-right: 1px solid #d4c5e8 !important;
+}
+
+
+/* =========================================================
+   SIDEBAR HEADER
+========================================================= */
+
+.custom-sidebar .sidebar-header {
+  height: 65px;
+
+  display: flex;
+
+  justify-content: center;
+
+  align-items: center;
+
+  background: #f2f3fe !important;
+
+  border-bottom: 1px solid #d4c5e8 !important;
+}
+
+.sidebar-header-custom {
+  height: 90px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  padding: 0 16px;
+}
+
+
+/* =========================================================
+   SIDEBAR TITLE
+========================================================= */
+
+.sidebar-title-container {
+  display: flex !important;
+
+  flex-direction: row !important;
+
+  align-items: center !important;
+
+  justify-content: flex-start !important;
+
+  width: 100%;
+
+  gap: 12px;
+
+  text-decoration: none !important;
+
+  padding: 0 !important;
+}
+
+.sidebar-logo {
+  width: 46px;
+
+  height: 46px;
+
+  object-fit: contain;
+
+  flex-shrink: 0;
+}
+
+.sidebar-title-text {
+  display: flex;
+
+  flex-direction: column;
+}
+
+.sidebar-title {
+  margin: 0;
+
+  color: #4915af !important;
+
+  font-size: 22px;
+
+  font-weight: 700;
+
+  line-height: 1;
+}
+
+.sidebar-subtitle {
+  margin-top: 4px;
+
+  color: #4915af !important;
+
+  font-size: 10px;
+
+  line-height: 1.2;
+}
+
+
+/* =========================================================
+   SIDEBAR NAVIGATION
+========================================================= */
+
+.custom-sidebar .sidebar-nav {
+  background: #f2f3fe !important;
+
+  padding: 12px 10px !important;
+
+  --cui-sidebar-nav-link-color: #4915af;
+
+  --cui-sidebar-nav-link-hover-color: #4915af;
+
+  --cui-sidebar-nav-link-hover-bg: transparent;
+
+  --cui-sidebar-nav-link-active-color: #4915af;
+
+  --cui-sidebar-nav-link-active-bg: #ddd2f7;
+
+  --cui-sidebar-nav-group-bg: transparent;
+
+  --cui-sidebar-nav-group-toggle-color: #4915af;
+
+  --cui-sidebar-nav-group-toggle-hover-color: #4915af;
+
+  --cui-sidebar-nav-group-toggle-hover-bg: transparent;
+}
+
+
+/* =========================================================
+   GLOBAL TEXT COLOR
+========================================================= */
+
+.custom-sidebar .sidebar-nav,
+.custom-sidebar .sidebar-nav .nav-link,
+.custom-sidebar .sidebar-nav .nav-group-toggle {
+  color: #4915af !important;
+}
+
+
+/* =========================================================
+   NORMAL NAV LINK
+========================================================= */
+
+.custom-sidebar .sidebar-nav .nav-link {
+  display: flex !important;
+
+  align-items: center !important;
+
+  min-height: 42px;
+
+  border-radius: 10px;
+
+  background: transparent !important;
+
+  color: #4915af !important;
+
+  font-weight: 500;
+
+  transition: all 0.2s ease;
+}
+
+
+/* =========================================================
+   ALL ICONS
+========================================================= */
+
+.custom-sidebar .sidebar-nav .nav-icon {
+  position: static !important;
+
+  display: block !important;
+
+  width: 20px !important;
+
+  min-width: 20px !important;
+
+  height: 20px !important;
+
+  min-height: 20px !important;
+
+  margin-left: 0 !important;
+
+  margin-right: 12px !important;
+
+  padding: 0 !important;
+
+  color: #4915af !important;
+
+  fill: currentColor !important;
+
+  flex-shrink: 0 !important;
+
+  transform: none !important;
+}
+
+.custom-sidebar .sidebar-nav svg {
+  color: #4915af !important;
+
+  fill: currentColor !important;
+}
+
+
+/* =========================================================
+   NORMAL TEXT
+========================================================= */
+
+.custom-sidebar
+.sidebar-nav
+.nav-link
+span,
+
+.custom-sidebar
+.sidebar-nav
+.nav-link
+p,
+
+.custom-sidebar
+.sidebar-nav
+.nav-link
+div {
+  color: #4915af !important;
+}
+
+
+/* =========================================================
+   HOVER
+========================================================= */
+
+.custom-sidebar
+.sidebar-nav
+.nav-link:hover {
+  color: #4915af !important;
+
+  background: transparent !important;
+}
+
+
+/* =========================================================
+   ACTIVE COMMON
+========================================================= */
+
+.custom-sidebar
+.sidebar-nav
+.nav-link.active {
+  color: #4915af !important;
+
+  font-weight: 600;
+
+  box-shadow: none !important;
+}
+
+
+/* =========================================================
+   ACTIVE ICON
+========================================================= */
+
+.custom-sidebar
+.sidebar-nav
+.nav-link.active
+.nav-icon,
+
+.custom-sidebar
+.sidebar-nav
+.nav-link.active
+svg {
+  color: #4915af !important;
+
+  fill: #4915af !important;
+}
+
+
+/* =========================================================
+   MASTERS PARENT
+========================================================= */
+
+.custom-sidebar .nav-group {
+  margin-bottom: 5px;
+
+  background: transparent !important;
+
+  border: 0 !important;
+}
+
+
+/* =========================================================
+   MASTERS
+   NO BACKGROUND
+   NO ACTIVE BACKGROUND
+========================================================= */
+
+.custom-sidebar .nav-group > .nav-group-toggle {
+  position: relative !important;
+
+  display: flex !important;
+
+  align-items: center !important;
+
+  height: 44px;
+
+  min-height: 44px;
+
+  width: 100% !important;
+
+  padding: 0 16px !important;
+
+  margin: 0 !important;
+
+  border: 0 !important;
+
+  border-radius: 10px !important;
+
+  background: transparent !important;
+
+  box-shadow: none !important;
+
+  color: #4915af !important;
+
+  font-size: 15px;
+
+  font-weight: 600;
+
+  transition: none !important;
+}
+
+
+/* =========================================================
+   IMPORTANT
+   REMOVE MASTERS ICON
+========================================================= */
+
+.custom-sidebar
+.nav-group
+>
+.nav-group-toggle
+>
+.nav-icon {
+  display: block !important;
+  width: 20px !important;
+  min-width: 20px !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  margin: 0 12px 0 0 !important;
+  padding: 0 !important;
+  color: #4915af !important;
+  fill: currentColor !important;
+  flex-shrink: 0 !important;
+  transform: none !important;
+}
+
+
+
+
+/* =========================================================
+   MASTERS TEXT
+========================================================= */
+
+.custom-sidebar
+.nav-group
+>
+.nav-group-toggle
+span,
+
+.custom-sidebar
+.nav-group
+>
+.nav-group-toggle
+p,
+
+.custom-sidebar
+.nav-group
+>
+.nav-group-toggle
+div {
+  color: #4915af !important;
+}
+
+
+/* =========================================================
+   MASTERS HOVER
+   NO BACKGROUND
+========================================================= */
+
+.custom-sidebar
+.nav-group
+>
+.nav-group-toggle:hover {
+  background: transparent !important;
+
+  color: #4915af !important;
+
+  box-shadow: none !important;
+}
+
+
+/* =========================================================
+   MASTERS OPEN
+   NO BACKGROUND
+========================================================= */
+
+.custom-sidebar
+.nav-group.show
+>
+.nav-group-toggle {
+  background: transparent !important;
+
+  color: #4915af !important;
+
+  box-shadow: none !important;
+}
+
+
+/* =========================================================
+   MASTERS ARROW
+   (CoreUI's base SCSS already draws its own arrow on this
+   exact ::after using a mask-image/background-image. If we
+   don't explicitly kill that mask/background here, it clips
+   our custom border-chevron down to a tiny dot — which is
+   exactly what was happening. So every image-based property
+   is force-reset to `none` before drawing our own shape.)
+========================================================= */
+
+.custom-sidebar
+.nav-group-toggle::after {
+  content: "\25BE" !important; /* ▾ single glyph — same shape/size in both states, only rotated */
+
+  display: inline-block !important;
+
+  position: static !important;
+
+  flex-shrink: 0 !important;
+
+  width: auto !important;
+
+  height: auto !important;
+
+  min-width: 0 !important;
+
+  min-height: 0 !important;
+
+  margin-left: auto !important;
+
+  margin-right: 2px !important;
+
+  padding: 0 !important;
+
+  border: 0 !important;
+  border-radius: 0 !important;
+
+  background: none !important;
+  background-image: none !important;
+
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+
+  color: #4915af !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+
+  opacity: 1 !important;
+
+  transform: rotate(0deg) !important;
+  transform-origin: center !important;
+
+  transition: transform 0.2s ease !important;
+}
+
+.custom-sidebar
+.nav-group.show
+>
+.nav-group-toggle::after {
+  transform: rotate(180deg) !important;
+}
+
+
+/* =========================================================
+   CHILD MENU CONTAINER
+   CHILD IS MORE TO THE RIGHT
+========================================================= */
+
+.custom-sidebar
+.nav-group-items {
+  background: transparent !important;
+
+  padding-left: 10px !important;
+
+  margin-top: 6px;
+}
+
+
+/* =========================================================
+   CHILD MENU
+========================================================= */
+
+.custom-sidebar
+.nav-group-items
+.nav-link {
+  position: relative !important;
+
+  display: flex !important;
+
+  align-items: center !important;
+
+  height: 44px !important;
+
+  min-height: 44px !important;
+
+  width: 100% !important;
+
+  padding: 0 14px !important;
+
+  margin: 0 !important;
+
+  border-radius: 10px !important;
+
+  background: transparent !important;
+
+  color: #4915af !important;
+
+  font-size: 15px;
+
+  font-weight: 500;
+
+  overflow: hidden !important;
+
+  transition: all 0.2s ease;
+}
+
+
+/* =========================================================
+   CHILD ICON
+========================================================= */
+
+.custom-sidebar
+.nav-group-items
+.nav-link
+.nav-icon {
+  position: static !important;
+
+  display: block !important;
+
+  width: 20px !important;
+
+  min-width: 20px !important;
+
+  height: 20px !important;
+
+  min-height: 20px !important;
+
+  margin: 0 12px 0 0 !important;
+
+  padding: 0 !important;
+
+  color: #4915af !important;
+
+  fill: currentColor !important;
+
+  flex-shrink: 0 !important;
+
+  transform: none !important;
+}
+
+
+/* =========================================================
+   CHILD SVG
+========================================================= */
+
+.custom-sidebar
+.nav-group-items
+.nav-link
+.nav-icon
+svg {
+  position: static !important;
+
+  display: block !important;
+
+  width: 20px !important;
+
+  height: 20px !important;
+
+  margin: 0 !important;
+
+  padding: 0 !important;
+
+  transform: none !important;
+
+  color: #4915af !important;
+
+  fill: currentColor !important;
+}
+
+
+/* =========================================================
+   REMOVE BULLET
+========================================================= */
+
+.custom-sidebar
+.nav-group-items
+.nav-link::before {
+  content: none !important;
+
+  display: none !important;
+}
+
+
+/* =========================================================
+   CHILD TEXT
+========================================================= */
+
+.custom-sidebar
+.nav-group-items
+.nav-link
+span,
+
+.custom-sidebar
+.nav-group-items
+.nav-link
+p,
+
+.custom-sidebar
+.nav-group-items
+.nav-link
+div {
+  color: #4915af !important;
+}
+
+
+/* =========================================================
+   CHILD HOVER
+========================================================= */
+
+.custom-sidebar
+.nav-group-items
+.nav-link:hover {
+  background: transparent !important;
+
+  color: #4915af !important;
+}
+
+
+/* =========================================================
+   USER MASTER ACTIVE
+========================================================= */
+
+.custom-sidebar
+.nav-group-items
+.nav-link.active {
+  position: relative !important;
+
+  display: flex !important;
+
+  align-items: center !important;
+
+  background: #ddd2f7 !important;
+
+  color: #4915af !important;
+
+  font-weight: 600 !important;
+
+  border-radius: 10px !important;
+
+  box-shadow: none !important;
+
+  overflow: hidden !important;
+}
+
+
+/* =========================================================
+   USER MASTER ACTIVE ICON
+========================================================= */
+
+.custom-sidebar
+.nav-group-items
+.nav-link.active
+.nav-icon,
+
+.custom-sidebar
+.nav-group-items
+.nav-link.active
+svg {
+  color: #4915af !important;
+
+  fill: #4915af !important;
+}
+
+
+/* =========================================================
+   USER MASTER ACTIVE TEXT
+========================================================= */
+
+.custom-sidebar
+.nav-group-items
+.nav-link.active
+span,
+
+.custom-sidebar
+.nav-group-items
+.nav-link.active
+p,
+
+.custom-sidebar
+.nav-group-items
+.nav-link.active
+div {
+  color: #4915af !important;
+}
+
+
+/* =========================================================
+   LEFT ACTIVE LINE
+========================================================= */
+
+.custom-sidebar
+.nav-group-items
+.nav-link.active::after {
+  content: "" !important;
+
+  position: absolute !important;
+
+  left: 0 !important;
+
+  top: 0 !important;
+
+  bottom: 0 !important;
+
+  width: 4px !important;
+
+  margin: 0 !important;
+
+  padding: 0 !important;
+
+  border-radius: 10px 0 0 10px !important;
+
+  background: #4915af !important;
+}
+
+
+/* =========================================================
+   FOCUS
+========================================================= */
+
+.custom-sidebar
+.nav-link:focus,
+
+.custom-sidebar
+.nav-group-toggle:focus,
+
+.custom-sidebar
+.nav-link:focus-visible,
+
+.custom-sidebar
+.nav-group-toggle:focus-visible {
+  outline: none !important;
+
+  box-shadow: none !important;
+}
+
+
+/* =========================================================
+   SIDEBAR FOOTER
+========================================================= */
+
+.custom-sidebar-footer {
+  background: #f2f3fe !important;
+
+  border-top: 1px solid #d4c5e8 !important;
+
+  padding: 10px;
+}
+
+
+/* =========================================================
+   LOGOUT BUTTON
+========================================================= */
+
+.logout-button {
+  width: 100%;
+
+  height: 44px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: flex-start;
+
+  gap: 12px;
+
+  padding: 0 12px;
+
+  border: 0;
+
+  border-radius: 12px;
+
+  background: #e0d9fc !important;
+
+  color: #4915af !important;
+
+  font-weight: 600;
+
+  font-size: 14px;
+
+  text-transform: uppercase;
+
+  letter-spacing: 0.6px;
+
+  transition: all 0.25s ease;
+
+  cursor: pointer;
+}
+
+
+/* =========================================================
+   LOGOUT HOVER
+========================================================= */
+
+.logout-button:hover {
+  background: #d4c5e8 !important;
+
+  transform: translateY(-1px);
+
+  box-shadow: 0 4px 12px rgba(73, 21, 175, 0.15);
+}
+
+
+/* =========================================================
+   LOGOUT ACTIVE
+========================================================= */
+
+.logout-button:active {
+  transform: translateY(0);
+
+  box-shadow: none;
+}
+
+
+/* =========================================================
+   LOGOUT ICON WRAPPER
+========================================================= */
+
+.logout-icon-wrapper {
+  width: 32px;
+
+  height: 32px;
+
+  border-radius: 10px;
+
+  background: #d4c5e8;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  flex-shrink: 0;
+}
+
+
+/* =========================================================
+   LOGOUT ICON
+========================================================= */
+
+.logout-icon {
+  color: #4915af !important;
+
+  width: 18px !important;
+
+  height: 18px !important;
+}
+
+
+/* =========================================================
+   LOGOUT TEXT
+========================================================= */
+
+.logout-text {
+  color: #4915af !important;
+
+  font-weight: 600;
+
+  letter-spacing: 0.5px;
+}
