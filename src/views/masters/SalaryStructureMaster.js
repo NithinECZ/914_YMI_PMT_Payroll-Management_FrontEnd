@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react'
 import DataTable from 'react-data-table-component'
+import Select from 'react-select'
 import {
   CButton,
   CFormInput,
@@ -31,28 +32,21 @@ import {
   FaTag,
   FaCogs,
   FaPercentage,
+  FaChevronUp,
+  FaChevronDown,
 } from 'react-icons/fa'
 import { toast } from 'react-toastify'
 import API from '../../api.js'
 import '../../assets/CSS/user.css'
 import usePrivilege from '../hooks/usePrivilege'
 
-// ========== OPTIONS ==========
-const EMPLOYEE_CATEGORY_OPTIONS = ['CL', 'NAPS']
-
-const SKILL_CATEGORY_OPTIONS = [
-  'CL - Unskilled',
-  'CL - Semi-Skilled',
-  'CL - Semi-Skilled Level 2',
-  'NAPS - Unskilled',
-  'NAPS - Extended',
-  'Staff - Semi-Skilled',
-]
-
 const COMPONENT_TYPE_OPTIONS = ['Earning', 'Deduction']
 const CALCULATION_METHOD_OPTIONS = ['Fixed Amount', 'Percentage', 'Per Hour']
 
-// ========== LAYOUT CONSTANTS (single source of truth for alignment) ==========
+const toOptions = (arr) => arr.map((v) => ({ value: v, label: v }))
+const COMPONENT_TYPE_SELECT_OPTIONS = toOptions(COMPONENT_TYPE_OPTIONS)
+const CALCULATION_METHOD_SELECT_OPTIONS = toOptions(CALCULATION_METHOD_OPTIONS)
+
 const FIELD_HEIGHT = 38
 const LABEL_BLOCK_HEIGHT = 22
 const ERROR_SLOT_HEIGHT = 18
@@ -63,11 +57,15 @@ const customStyles = {
     style: {
       justifyContent: 'flex-start',
       fontSize: '13px',
-      fontWeight: '600',
+      fontWeight: '700',
       paddingTop: '4px',
       paddingBottom: '4px',
       background: '#f1f4f9',
       textTransform: 'uppercase',
+      color: '#1e293b',
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
     },
   },
   cells: {
@@ -76,6 +74,11 @@ const customStyles = {
       fontSize: '13px',
       paddingTop: '0px',
       paddingBottom: '0px',
+    },
+  },
+  table: {
+    style: {
+      tableLayout: 'fixed',
     },
   },
 }
@@ -119,6 +122,47 @@ const labelStyle = {
   textOverflow: 'ellipsis',
 }
 
+const selectStyles = {
+  control: (base, state) => ({
+    ...base,
+    minHeight: `${FIELD_HEIGHT}px`,
+    height: `${FIELD_HEIGHT}px`,
+    fontSize: '13px',
+    borderColor: state.isFocused ? '#6b4fa1' : '#d1d5db',
+    boxShadow: state.isFocused ? '0 0 0 1px #6b4fa1' : 'none',
+    '&:hover': { borderColor: state.isFocused ? '#6b4fa1' : '#9ca3af' },
+    paddingLeft: '26px',
+  }),
+  valueContainer: (base) => ({
+    ...base,
+    height: `${FIELD_HEIGHT}px`,
+    padding: '0 8px',
+  }),
+  input: (base) => ({
+    ...base,
+    margin: 0,
+    padding: 0,
+  }),
+  indicatorsContainer: (base) => ({
+    ...base,
+    height: `${FIELD_HEIGHT}px`,
+  }),
+  placeholder: (base) => ({
+    ...base,
+    color: '#9ca3af',
+    fontSize: '13px',
+  }),
+  singleValue: (base) => ({
+    ...base,
+    fontSize: '13px',
+  }),
+  menu: (base) => ({
+    ...base,
+    zIndex: 9999,
+    fontSize: '13px',
+  }),
+}
+
 const EMPTY_STRUCTURE = {
   structureName: '',
   employeeCategory: '',
@@ -150,7 +194,6 @@ const getLoggedInUser = () => {
   }
 }
 
-// Pulls the message out of whatever the API returned.
 const apiMessage = (err, fallback) =>
   err?.response?.data?.message ||
   err?.response?.data?.Message ||
@@ -171,17 +214,16 @@ const SalaryStructureMaster = () => {
   const [activeCardFilter, setActiveCardFilter] = useState('ALL')
   const [showForm, setShowForm] = useState(false)
 
+  // From separate SPs
+  const [empCategoryOptions, setEmpCategoryOptions] = useState([])     // Code only
+  const [skillCategoryOptions, setSkillCategoryOptions] = useState([]) // Code - Name
+
   const [form, setForm] = useState(EMPTY_STRUCTURE)
   const [errors, setErrors] = useState(EMPTY_STRUCTURE_ERRORS)
   const [editId, setEditId] = useState(null)
   const [components, setComponents] = useState([])
   const [newComponent, setNewComponent] = useState(EMPTY_COMPONENT)
   const [componentErrors, setComponentErrors] = useState({})
-
-  const [openEmployeeGroup, setOpenEmployeeGroup] = useState(false)
-  const [openSkillCategory, setOpenSkillCategory] = useState(false)
-  const [openCompType, setOpenCompType] = useState(false)
-  const [openCalcMethod, setOpenCalcMethod] = useState(false)
 
   const [deleteId, setDeleteId] = useState(null)
   const [deleteStructure, setDeleteStructure] = useState(null)
@@ -190,6 +232,7 @@ const SalaryStructureMaster = () => {
   const [showViewModal, setShowViewModal] = useState(false)
   const [viewStructure, setViewStructure] = useState(null)
   const [viewComponents, setViewComponents] = useState([])
+  const [detailsOpen, setDetailsOpen] = useState(true)
 
   const { canEdit, canDelete } = usePrivilege()
   const canEditStructure = canEdit('Salary Structure')
@@ -197,19 +240,8 @@ const SalaryStructureMaster = () => {
 
   useEffect(() => {
     loadStructures()
-  }, [])
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (!e.target.closest('.custom-select-wrapper')) {
-        setOpenEmployeeGroup(false)
-        setOpenSkillCategory(false)
-        setOpenCompType(false)
-        setOpenCalcMethod(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    loadEmpCategories()
+    loadSkillCategories()
   }, [])
 
   useEffect(() => {
@@ -239,6 +271,48 @@ const SalaryStructureMaster = () => {
     }
   }
 
+  // Employee Group → CODE only (sp_GetDistinctEmpCategories)
+  const loadEmpCategories = async () => {
+    try {
+      const res = await API.get('/SalaryStructure/emp-categories')
+      const list = Array.isArray(res.data) ? res.data : []
+      const codes = [
+        ...new Set(
+          list
+            .map((x) => (x.code || x.Code || '').trim())
+            .filter((c) => c !== '')
+        ),
+      ]
+      setEmpCategoryOptions(codes.map((code) => ({ value: code, label: code })))
+    } catch (err) {
+      toast.error(apiMessage(err, 'Failed to load employee categories'))
+      setEmpCategoryOptions([])
+    }
+  }
+
+  // Skill Category → CODE - NAME (sp_GetDistinctSkillCategories)
+  const loadSkillCategories = async () => {
+    try {
+      const res = await API.get('/SalaryStructure/skill-categories')
+      const list = Array.isArray(res.data) ? res.data : []
+      const skillOpts = []
+      const seen = new Set()
+      list.forEach((x) => {
+        const code = (x.code || x.Code || '').trim()
+        const name = (x.name || x.Name || '').trim()
+        if (!code && !name) return
+        const label = code && name ? `${code} - ${name}` : code || name
+        if (seen.has(label)) return
+        seen.add(label)
+        skillOpts.push({ value: label, label })
+      })
+      setSkillCategoryOptions(skillOpts)
+    } catch (err) {
+      toast.error(apiMessage(err, 'Failed to load skill categories'))
+      setSkillCategoryOptions([])
+    }
+  }
+
   const clearError = (name) => setErrors((prev) => ({ ...prev, [name]: '' }))
 
   const handleChange = (e) => {
@@ -253,8 +327,6 @@ const SalaryStructureMaster = () => {
     setComponentErrors((prev) => ({ ...prev, [name]: '' }))
   }
 
-  // Client-side duplicate check against the already-loaded list, so the user
-  // is told before the request goes out. The server checks again.
   const isDuplicateName = (name) => {
     const n = (name || '').trim().toLowerCase()
     if (!n) return false
@@ -355,7 +427,6 @@ const SalaryStructureMaster = () => {
       const msg = apiMessage(err, editId ? 'Update Failed' : 'Save Failed')
       const field = apiField(err)
 
-      // 409 = duplicate structure name. Attach it to the field, not just a toast.
       if (err?.response?.status === 409 || field === 'structureName') {
         setErrors((prev) => ({ ...prev, structureName: msg }))
         nameRef.current?.focus()
@@ -399,12 +470,12 @@ const SalaryStructureMaster = () => {
     }
   }
 
-  // Loads the FULL structure record (header fields + components) for the View modal.
   const openViewStructure = async (row) => {
     try {
       const res = await API.get(`/SalaryStructure/${row.id}`)
       setViewStructure(res.data)
       setViewComponents(res.data.components || [])
+      setDetailsOpen(true)
       setShowViewModal(true)
     } catch (err) {
       toast.error(apiMessage(err, 'Failed to load salary structure details'))
@@ -434,10 +505,6 @@ const SalaryStructureMaster = () => {
     setComponents([])
     setNewComponent(EMPTY_COMPONENT)
     setComponentErrors({})
-    setOpenEmployeeGroup(false)
-    setOpenSkillCategory(false)
-    setOpenCompType(false)
-    setOpenCalcMethod(false)
   }
 
   const openForm = () => {
@@ -515,19 +582,21 @@ const SalaryStructureMaster = () => {
   }
 
   const columns = [
-    { name: 'S.No', selector: (_, i) => i + 1, width: '70px' },
-    { name: 'Structure Name', selector: (row) => row.structureName, sortable: true, grow: 2 },
-    { name: 'Employee Category', selector: (row) => row.employeeCategory, sortable: true, width: '140px' },
-    { name: 'Effective From', selector: (row) => formatDate(row.effectiveFrom), sortable: true, width: '130px' },
+    { name: 'S.No', selector: (_, i) => i + 1, width: '8%', style: { flex: '0 0 8%' } },
+    { name: 'Structure Name', selector: (row) => row.structureName, sortable: true, width: '20%', style: { flex: '0 0 20%' } },
+    { name: 'Employee Category', selector: (row) => row.employeeCategory, sortable: true, width: '18%', style: { flex: '0 0 18%' } },
+    { name: 'Effective From', selector: (row) => formatDate(row.effectiveFrom), sortable: true, width: '15%', style: { flex: '0 0 15%' } },
     {
       name: 'Skill Categories',
       cell: (row) => <span style={skillBadgeStyle}>{row.skillCategory || '-'}</span>,
-      grow: 1.5,
+      width: '15%',
+      style: { flex: '0 0 15%' },
     },
     {
       name: 'Status',
       center: true,
-      width: '110px',
+      width: '12%',
+      style: { flex: '0 0 12%' },
       cell: (row) => {
         const active = row.status === '1'
         return (
@@ -546,21 +615,14 @@ const SalaryStructureMaster = () => {
         )
       },
     },
-    { name: 'Created By', selector: (row) => row.createdBy || '-', width: '120px' },
-    { name: 'Created On', selector: (row) => formatDate(row.createdOn), width: '120px' },
     {
       name: 'Action',
       center: true,
-      width: '150px',
-      // Order: View -> Edit -> Delete
+      width: '12%',
+      style: { flex: '0 0 12%' },
       cell: (row) => (
-        <div style={{ display: 'flex', gap: '6px' }}>
-          <button
-            className="table-action-btn privilege-btn"
-            onClick={() => openViewStructure(row)}
-            title="View Details"
-            style={{ background: '#e0e7ff', color: '#3730a3' }}
-          >
+        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+          <button className="table-action-btn" onClick={() => openViewStructure(row)} title="View Details" style={{ color: '#16a34a' }}>
             <FaEye />
           </button>
           {canEditStructure && (
@@ -592,15 +654,8 @@ const SalaryStructureMaster = () => {
     </label>
   )
 
-  // Reserved space so a validation message never shifts the row.
   const errorSlot = (msg) => (
-    <div
-      style={{
-        minHeight: `${ERROR_SLOT_HEIGHT}px`,
-        lineHeight: `${ERROR_SLOT_HEIGHT}px`,
-        fontSize: '11.5px',
-      }}
-    >
+    <div style={{ minHeight: `${ERROR_SLOT_HEIGHT}px`, lineHeight: `${ERROR_SLOT_HEIGHT}px`, fontSize: '11.5px' }}>
       {msg ? <small className="text-danger">{msg}</small> : null}
     </div>
   )
@@ -613,7 +668,7 @@ const SalaryStructureMaster = () => {
 
   const viewColumns = [
     { name: 'S.No', selector: (_, i) => i + 1, width: '70px' },
-    { name: 'Component Name', selector: (row) => row.componentName, grow: 2 },
+    { name: 'Component Name', selector: (row) => row.componentName, grow: 2, minWidth: '180px' },
     {
       name: 'Type',
       cell: (row) => {
@@ -624,100 +679,34 @@ const SalaryStructureMaster = () => {
           </span>
         )
       },
-      width: '120px',
+      minWidth: '110px',
     },
-    { name: 'Calculation Method', selector: (row) => row.calculationMethod, width: '150px' },
+    { name: 'Calculation Method', selector: (row) => row.calculationMethod, minWidth: '190px' },
     {
       name: 'Amount/Percentage',
       selector: (row) => formatAmount(row.amountOrPercentage, row.calculationMethod),
-      width: '150px',
+      minWidth: '170px',
       right: true,
     },
   ]
 
-  const CustomSelect = ({
-    value,
-    placeholder,
-    options,
-    open,
-    onToggle,
-    onSelect,
-    error,
-    icon: Icon,
-    style = {},
-  }) => (
-    <div className="custom-select-wrapper" style={{ position: 'relative', zIndex: open ? 50 : 1, ...style }}>
-      {Icon && <Icon style={fieldIconStyle} />}
-      <div
-        className={`custom-select-trigger ${!value ? 'custom-select-placeholder' : ''} ${error ? 'error' : ''} ${open ? 'open' : ''}`}
-        onClick={onToggle}
-        style={{
-          height: `${FIELD_HEIGHT}px`,
-          minHeight: `${FIELD_HEIGHT}px`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          fontSize: '13px',
-          paddingLeft: Icon ? '34px' : '12px',
-          paddingRight: '12px',
-          boxSizing: 'border-box',
-        }}
-      >
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {value || placeholder}
-        </span>
-        <span className="custom-select-arrow" style={{ flexShrink: 0, marginLeft: '8px' }}>
-          ▼
-        </span>
-      </div>
-      <div
-        className={`custom-select-dropdown ${open ? 'open' : ''}`}
-        style={{ zIndex: 9999, maxHeight: '220px', overflowY: 'auto' }}
-      >
-        {options.map((opt) => (
-          <div
-            key={opt}
-            className={`custom-select-option ${value === opt ? 'selected' : ''}`}
-            onClick={() => onSelect(opt)}
-          >
-            {opt}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-
-  // Small helper for the "all details" grid inside the View modal.
   const DetailItem = ({ label, value }) => (
-    <div style={{ minWidth: '160px' }}>
-      <div style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>
-        {label}
-      </div>
-      <div style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b', marginTop: '2px' }}>
-        {value ?? '-'}
-      </div>
+    <div style={{ minWidth: '170px' }}>
+      <div style={{ fontSize: '11px', fontWeight: 700, color: '#0f172a', textTransform: 'uppercase' }}>{label}</div>
+      <div style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b', marginTop: '2px' }}>{value ?? '-'}</div>
     </div>
   )
 
   return (
     <div className="user-master-page">
-      {/* ========== FORM (Add / Edit) ========== */}
       {showForm && (
         <CCard className="user-form-card" style={{ overflow: 'visible' }}>
           <CCardBody style={{ overflow: 'visible' }}>
-            <div
-              className="section-title"
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-            >
+            <div className="section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>{editId ? 'EDIT SALARY STRUCTURE' : 'ADD SALARY STRUCTURE'}</span>
-              <FaArrowLeft
-                style={{ cursor: 'pointer', color: '#6b4fa1', fontSize: '18px' }}
-                title="Back"
-                onClick={closeForm}
-              />
+              <FaArrowLeft style={{ cursor: 'pointer', color: '#6b4fa1', fontSize: '18px' }} title="Back" onClick={closeForm} />
             </div>
 
-            {/* ========== STRUCTURE HEADER ========== */}
             <CRow className="g-3 align-items-start" style={{ overflow: 'visible' }}>
               <CCol md={3}>
                 {fieldLabel('Structure Name')}
@@ -742,51 +731,47 @@ const SalaryStructureMaster = () => {
                 {errorSlot(errors.structureName)}
               </CCol>
 
+              {/* Employee Group → CODE only */}
               <CCol md={2} style={{ overflow: 'visible' }}>
                 {fieldLabel('Employee Group')}
-                <CustomSelect
-                  value={form.employeeCategory}
-                  placeholder="Select"
-                  options={EMPLOYEE_CATEGORY_OPTIONS}
-                  open={openEmployeeGroup}
-                  error={!!errors.employeeCategory}
-                  icon={FaUsers}
-                  onToggle={() => {
-                    setOpenEmployeeGroup(!openEmployeeGroup)
-                    setOpenSkillCategory(false)
-                    setOpenCompType(false)
-                    setOpenCalcMethod(false)
-                  }}
-                  onSelect={(opt) => {
-                    setForm((prev) => ({ ...prev, employeeCategory: opt }))
-                    clearError('employeeCategory')
-                    setOpenEmployeeGroup(false)
-                  }}
-                />
+                <div style={{ position: 'relative' }}>
+                  <FaUsers style={fieldIconStyle} />
+                  <Select
+                    options={empCategoryOptions}
+                    value={empCategoryOptions.find((o) => o.value === form.employeeCategory) || null}
+                    onChange={(opt) => {
+                      setForm((prev) => ({ ...prev, employeeCategory: opt ? opt.value : '' }))
+                      clearError('employeeCategory')
+                    }}
+                    placeholder="Select"
+                    isClearable
+                    styles={selectStyles}
+                    classNamePrefix="react-select"
+                    className={errors.employeeCategory ? 'error-select' : ''}
+                  />
+                </div>
                 {errorSlot(errors.employeeCategory)}
               </CCol>
 
+              {/* Skill Category → CODE - NAME */}
               <CCol md={3} style={{ overflow: 'visible' }}>
                 {fieldLabel('Skill Category')}
-                <CustomSelect
-                  value={form.skillCategory}
-                  placeholder="Select"
-                  options={SKILL_CATEGORY_OPTIONS}
-                  open={openSkillCategory}
-                  error={!!errors.skillCategory}
-                  icon={FaLayerGroup}
-                  onToggle={() => {
-                    setOpenSkillCategory(!openSkillCategory)
-                    setOpenEmployeeGroup(false)
-                    setOpenCompType(false)
-                    setOpenCalcMethod(false)
-                  }}
-                  onSelect={(opt) => {
-                    setForm((prev) => ({ ...prev, skillCategory: opt }))
-                    clearError('skillCategory')
-                    setOpenSkillCategory(false)
-                  }}
-                />
+                <div style={{ position: 'relative' }}>
+                  <FaLayerGroup style={fieldIconStyle} />
+                  <Select
+                    options={skillCategoryOptions}
+                    value={skillCategoryOptions.find((o) => o.value === form.skillCategory) || null}
+                    onChange={(opt) => {
+                      setForm((prev) => ({ ...prev, skillCategory: opt ? opt.value : '' }))
+                      clearError('skillCategory')
+                    }}
+                    placeholder="Select"
+                    isClearable
+                    styles={selectStyles}
+                    classNamePrefix="react-select"
+                    className={errors.skillCategory ? 'error-select' : ''}
+                  />
+                </div>
                 {errorSlot(errors.skillCategory)}
               </CCol>
 
@@ -852,7 +837,7 @@ const SalaryStructureMaster = () => {
               </CCol>
             </CRow>
 
-            {/* ========== ADD COMPONENT ========== */}
+            {/* Add Component section - same as before */}
             <div
               style={{
                 marginTop: '20px',
@@ -864,9 +849,8 @@ const SalaryStructureMaster = () => {
               }}
             >
               <div style={{ fontWeight: 600, marginBottom: '12px', color: '#334155' }}>Add Component</div>
-
-              <CRow className="g-2 align-items-start" style={{ overflow: 'visible' }}>
-                <CCol md={3}>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', overflow: 'visible', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '180px' }}>
                   {fieldLabel('Component Name', false)}
                   <div style={{ position: 'relative' }}>
                     <FaTag style={fieldIconStyle} />
@@ -886,57 +870,53 @@ const SalaryStructureMaster = () => {
                     />
                   </div>
                   {errorSlot(componentErrors.componentName)}
-                </CCol>
+                </div>
 
-                <CCol md={2} style={{ overflow: 'visible' }}>
+                <div style={{ flex: 1, minWidth: '180px', overflow: 'visible' }}>
                   {fieldLabel('Type', false)}
-                  <CustomSelect
-                    value={newComponent.type}
-                    placeholder="Select"
-                    options={COMPONENT_TYPE_OPTIONS}
-                    open={openCompType}
-                    error={!!componentErrors.type}
-                    icon={FaLayerGroup}
-                    onToggle={() => {
-                      setOpenCompType(!openCompType)
-                      setOpenCalcMethod(false)
-                      setOpenEmployeeGroup(false)
-                      setOpenSkillCategory(false)
-                    }}
-                    onSelect={(opt) => {
-                      setNewComponent((prev) => ({ ...prev, type: opt }))
-                      setComponentErrors((prev) => ({ ...prev, type: '' }))
-                      setOpenCompType(false)
-                    }}
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <FaLayerGroup style={fieldIconStyle} />
+                    <Select
+                      options={COMPONENT_TYPE_SELECT_OPTIONS}
+                      value={COMPONENT_TYPE_SELECT_OPTIONS.find((o) => o.value === newComponent.type) || null}
+                      onChange={(opt) => {
+                        setNewComponent((prev) => ({ ...prev, type: opt ? opt.value : '' }))
+                        setComponentErrors((prev) => ({ ...prev, type: '' }))
+                      }}
+                      placeholder="Select"
+                      isClearable
+                      styles={selectStyles}
+                      classNamePrefix="react-select"
+                      className={componentErrors.type ? 'error-select' : ''}
+                    />
+                  </div>
                   {errorSlot(componentErrors.type)}
-                </CCol>
+                </div>
 
-                <CCol md={3} style={{ overflow: 'visible' }}>
+                <div style={{ flex: 1, minWidth: '180px', overflow: 'visible' }}>
                   {fieldLabel('Calculation Method', false)}
-                  <CustomSelect
-                    value={newComponent.calculationMethod}
-                    placeholder="Select"
-                    options={CALCULATION_METHOD_OPTIONS}
-                    open={openCalcMethod}
-                    error={!!componentErrors.calculationMethod}
-                    icon={FaCogs}
-                    onToggle={() => {
-                      setOpenCalcMethod(!openCalcMethod)
-                      setOpenCompType(false)
-                      setOpenEmployeeGroup(false)
-                      setOpenSkillCategory(false)
-                    }}
-                    onSelect={(opt) => {
-                      setNewComponent((prev) => ({ ...prev, calculationMethod: opt }))
-                      setComponentErrors((prev) => ({ ...prev, calculationMethod: '' }))
-                      setOpenCalcMethod(false)
-                    }}
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <FaCogs style={fieldIconStyle} />
+                    <Select
+                      options={CALCULATION_METHOD_SELECT_OPTIONS}
+                      value={
+                        CALCULATION_METHOD_SELECT_OPTIONS.find((o) => o.value === newComponent.calculationMethod) || null
+                      }
+                      onChange={(opt) => {
+                        setNewComponent((prev) => ({ ...prev, calculationMethod: opt ? opt.value : '' }))
+                        setComponentErrors((prev) => ({ ...prev, calculationMethod: '' }))
+                      }}
+                      placeholder="Select"
+                      isClearable
+                      styles={selectStyles}
+                      classNamePrefix="react-select"
+                      className={componentErrors.calculationMethod ? 'error-select' : ''}
+                    />
+                  </div>
                   {errorSlot(componentErrors.calculationMethod)}
-                </CCol>
+                </div>
 
-                <CCol md={3}>
+                <div style={{ flex: 1, minWidth: '180px' }}>
                   {fieldLabel('Amount/Percentage', false)}
                   <div style={{ position: 'relative' }}>
                     {newComponent.calculationMethod === 'Percentage' ? (
@@ -963,9 +943,9 @@ const SalaryStructureMaster = () => {
                     />
                   </div>
                   {errorSlot(componentErrors.amountOrPercentage)}
-                </CCol>
+                </div>
 
-                <CCol md={1} className="d-flex justify-content-center">
+                <div style={{ flexShrink: 0 }} className="d-flex justify-content-center">
                   <div style={{ marginTop: `${LABEL_BLOCK_HEIGHT + 4}px` }}>
                     <div
                       onClick={addComponentRow}
@@ -988,20 +968,12 @@ const SalaryStructureMaster = () => {
                       <FaPlus />
                     </div>
                   </div>
-                </CCol>
-              </CRow>
+                </div>
+              </div>
             </div>
 
-            {/* ========== ADDED COMPONENTS (read-only, delete only) ========== */}
             {components.length > 0 && (
-              <div
-                style={{
-                  marginTop: '16px',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '10px',
-                  overflow: 'hidden',
-                }}
-              >
+              <div style={{ marginTop: '16px', border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
                 <div
                   style={{
                     display: 'flex',
@@ -1020,7 +992,6 @@ const SalaryStructureMaster = () => {
                   <div style={{ flex: 2 }}>Amount / %</div>
                   <div style={{ width: '60px', textAlign: 'center' }}>Action</div>
                 </div>
-
                 {components.map((comp, index) => {
                   const badge = typeBadgeStyle(comp.type)
                   return (
@@ -1037,15 +1008,7 @@ const SalaryStructureMaster = () => {
                     >
                       <div style={{ flex: 3, fontWeight: 500, color: '#1e293b' }}>{comp.componentName}</div>
                       <div style={{ flex: 2 }}>
-                        <span
-                          style={{
-                            ...badge,
-                            padding: '2px 10px',
-                            borderRadius: '12px',
-                            fontSize: '11px',
-                            fontWeight: 600,
-                          }}
-                        >
+                        <span style={{ ...badge, padding: '2px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600 }}>
                           {comp.type}
                         </span>
                       </div>
@@ -1054,12 +1017,7 @@ const SalaryStructureMaster = () => {
                         {formatAmount(comp.amountOrPercentage, comp.calculationMethod)}
                       </div>
                       <div style={{ width: '60px', textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          className="table-action-btn delete-btn"
-                          onClick={() => removeComponentRow(index)}
-                          title="Remove"
-                        >
+                        <button type="button" className="table-action-btn delete-btn" onClick={() => removeComponentRow(index)} title="Remove">
                           <FaTrash />
                         </button>
                       </div>
@@ -1085,7 +1043,6 @@ const SalaryStructureMaster = () => {
         </CCard>
       )}
 
-      {/* ========== SUMMARY CARDS ========== */}
       {!showForm && (
         <div
           className="summary-stats-wrapper"
@@ -1127,17 +1084,7 @@ const SalaryStructureMaster = () => {
               </div>
             )
           })}
-
-          <div
-            onClick={openForm}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              cursor: 'pointer',
-              flexShrink: 0,
-            }}
-          >
+          <div onClick={openForm} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
             <div
               style={{
                 width: '48px',
@@ -1161,7 +1108,6 @@ const SalaryStructureMaster = () => {
         </div>
       )}
 
-      {/* ========== LIST ========== */}
       <CCard className="mt-3">
         <CCardBody>
           <div className="table-header">
@@ -1175,10 +1121,7 @@ const SalaryStructureMaster = () => {
                 style={{ paddingLeft: '36px', width: '280px', height: `${FIELD_HEIGHT}px` }}
               />
               {search && (
-                <FaTimes
-                  style={{ position: 'absolute', right: '12px', cursor: 'pointer', color: '#9ca3af' }}
-                  onClick={() => setSearch('')}
-                />
+                <FaTimes style={{ position: 'absolute', right: '12px', cursor: 'pointer', color: '#9ca3af' }} onClick={() => setSearch('')} />
               )}
             </div>
           </div>
@@ -1222,7 +1165,6 @@ const SalaryStructureMaster = () => {
         </CCardBody>
       </CCard>
 
-      {/* Delete Modal */}
       <CModal visible={showDeleteModal} onClose={() => setShowDeleteModal(false)} alignment="center" backdrop="static">
         <CModalHeader className="border-0">
           <CModalTitle className="w-100 text-center text-danger fw-bold">⚠ Confirm Delete</CModalTitle>
@@ -1231,12 +1173,10 @@ const SalaryStructureMaster = () => {
           <p>Are you sure you want to delete this Salary Structure?</p>
           <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '8px', marginTop: '10px' }}>
             <div>
-              <strong>Structure :</strong>{' '}
-              <span className="text-primary fw-bold">{deleteStructure?.structureName}</span>
+              <strong>Structure :</strong> <span className="text-primary fw-bold">{deleteStructure?.structureName}</span>
             </div>
             <div className="mt-1">
-              <strong>Category :</strong>{' '}
-              <span className="text-primary fw-bold">{deleteStructure?.employeeCategory}</span>
+              <strong>Category :</strong> <span className="text-primary fw-bold">{deleteStructure?.employeeCategory}</span>
             </div>
           </div>
         </CModalBody>
@@ -1250,60 +1190,79 @@ const SalaryStructureMaster = () => {
         </CModalFooter>
       </CModal>
 
-      {/* View Modal - shows ALL structure details + components */}
-      <CModal visible={showViewModal} onClose={() => setShowViewModal(false)} size="lg" alignment="center" backdrop="static">
+      <CModal visible={showViewModal} onClose={() => setShowViewModal(false)} size="xl" alignment="center" backdrop="static">
         <CModalHeader className="border-0" style={{ background: '#f8fafc' }}>
-          <CModalTitle style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <CModalTitle style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b' }}>
             <FaDatabase style={{ color: '#4f46e5' }} />
             Salary Structure Details
           </CModalTitle>
         </CModalHeader>
         <CModalBody>
           {viewStructure && (
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '16px',
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: '10px',
-                padding: '16px',
-                marginBottom: '18px',
-              }}
-            >
-              <DetailItem label="Structure Name" value={viewStructure.structureName} />
-              <DetailItem label="Employee Category" value={viewStructure.employeeCategory} />
-              <DetailItem label="Skill Category" value={viewStructure.skillCategory} />
-              <DetailItem label="Effective From" value={formatDate(viewStructure.effectiveFrom)} />
-              <DetailItem
-                label="Status"
-                value={
-                  <span
-                    style={{
-                      background: viewStructure.status === '1' ? '#dcfce7' : '#fde8e8',
-                      color: viewStructure.status === '1' ? '#166534' : '#dc2626',
-                      padding: '3px 10px',
-                      borderRadius: '12px',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                    }}
-                  >
-                    {viewStructure.status === '1' ? 'Active' : 'Inactive'}
-                  </span>
-                }
-              />
-              <DetailItem label="Created By" value={viewStructure.createdBy} />
-              <DetailItem label="Created On" value={formatDate(viewStructure.createdOn)} />
-              {viewStructure.modifiedBy && (
-                <DetailItem label="Modified By" value={viewStructure.modifiedBy} />
-              )}
-              {viewStructure.modifiedOn && (
-                <DetailItem label="Modified On" value={formatDate(viewStructure.modifiedOn)} />
+            <div style={{ marginBottom: '18px' }}>
+              <div
+                onClick={() => setDetailsOpen((prev) => !prev)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  padding: '10px 14px',
+                  background: '#f1f4f9',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: detailsOpen ? '10px 10px 0 0' : '10px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  color: '#1e293b',
+                  textTransform: 'uppercase',
+                }}
+              >
+                <span>Structure Details</span>
+                {detailsOpen ? <FaChevronUp /> : <FaChevronDown />}
+              </div>
+              {detailsOpen && (
+                <div
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '16px',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderTop: 'none',
+                    borderRadius: '0 0 10px 10px',
+                    padding: '16px',
+                  }}
+                >
+                  <DetailItem label="Structure Name" value={viewStructure.structureName} />
+                  <DetailItem label="Employee Category" value={viewStructure.employeeCategory} />
+                  <DetailItem label="Skill Category" value={viewStructure.skillCategory} />
+                  <DetailItem label="Effective From" value={formatDate(viewStructure.effectiveFrom)} />
+                  <DetailItem
+                    label="Status"
+                    value={
+                      <span
+                        style={{
+                          background: viewStructure.status === '1' ? '#dcfce7' : '#fde8e8',
+                          color: viewStructure.status === '1' ? '#166534' : '#dc2626',
+                          padding: '3px 10px',
+                          borderRadius: '12px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                        }}
+                      >
+                        {viewStructure.status === '1' ? 'Active' : 'Inactive'}
+                      </span>
+                    }
+                  />
+                  <DetailItem label="Created By" value={viewStructure.createdBy} />
+                  <DetailItem label="Created On" value={formatDate(viewStructure.createdOn)} />
+                  {viewStructure.modifiedBy && <DetailItem label="Modified By" value={viewStructure.modifiedBy} />}
+                  {viewStructure.modifiedOn && <DetailItem label="Modified On" value={formatDate(viewStructure.modifiedOn)} />}
+                </div>
               )}
             </div>
           )}
-
           <div style={{ fontWeight: 700, fontSize: '13px', color: '#334155', marginBottom: '8px', textTransform: 'uppercase' }}>
             Components
           </div>

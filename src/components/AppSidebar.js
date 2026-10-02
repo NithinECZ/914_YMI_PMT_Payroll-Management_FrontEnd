@@ -69,7 +69,7 @@ const AppSidebar = () => {
     >
       <CSidebarHeader className="sidebar-header-custom">
         <CSidebarBrand className="sidebar-title-container">
-          <img src={sidebarLogo} alt="TSMS Logo" className="sidebar-logo" />
+          <img src={sidebarLogo} alt="YMI Logo" className="sidebar-logo" />
 
           <div>
             <div className="sidebar-title">PMT</div>

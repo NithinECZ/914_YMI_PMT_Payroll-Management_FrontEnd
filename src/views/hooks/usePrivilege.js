@@ -22,14 +22,29 @@ const usePrivilege = () => {
     setPrivileges(res.data || []);
   };
 
-  const canView = (menu) =>
-    privileges.some((p) => p.menuName === menu && p.canView);
+  const canView = (menu) => {
+    try {
+      const user = JSON.parse(sessionStorage.getItem("user"));
+      if (user?.userType === "SUPER ADMIN") return true;
+    } catch {}
+    return privileges.some((p) => p.menuName === menu && p.canView);
+  };
 
-  const canEdit = (menu) =>
-    privileges.some((p) => p.menuName === menu && p.canEdit);
+  const canEdit = (menu) => {
+    try {
+      const user = JSON.parse(sessionStorage.getItem("user"));
+      if (user?.userType === "SUPER ADMIN") return true;
+    } catch {}
+    return privileges.some((p) => p.menuName === menu && p.canEdit);
+  };
 
-  const canDelete = (menu) =>
-    privileges.some((p) => p.menuName === menu && p.canDelete);
+  const canDelete = (menu) => {
+    try {
+      const user = JSON.parse(sessionStorage.getItem("user"));
+      if (user?.userType === "SUPER ADMIN") return true;
+    } catch {}
+    return privileges.some((p) => p.menuName === menu && p.canDelete);
+  };
 
   return {
     privileges,

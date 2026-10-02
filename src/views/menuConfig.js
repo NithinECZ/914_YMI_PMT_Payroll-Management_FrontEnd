@@ -1,6 +1,17 @@
-import { cilPeople, cilEnvelopeClosed, cilUser, cilTruck, cilCalendar, cilLayers, cilChart } from "@coreui/icons";
+import { 
+  cilPeople, 
+  cilEnvelopeClosed, 
+  cilUser, 
+  cilTruck, 
+  cilCalendar, 
+  cilLayers, 
+  cilChart, 
+  cilSettings,
+  cilSwapHorizontal,
+  cilCheckCircle,
+} from "@coreui/icons";
 
-// For Sidebar Navigation - Masters, Configuration, Settings as separate top-level items
+// For Sidebar Navigation - Masters, Transactions, Configuration, Settings, Reports
 export const MENU_CONFIG = [
   {
     name: "Masters",
@@ -28,6 +39,28 @@ export const MENU_CONFIG = [
     ],
   },
   {
+    name: "Transactions",
+    icon: cilSwapHorizontal,
+    items: [
+      {
+        name: "Payroll Maker",
+        icon: cilChart,
+      },
+      {
+        name: "Payroll Checker",
+        icon: cilChart,
+      },
+      {
+        name: "Payroll Approver", // 👈 CHANGED: Approval nunchi Payroll Approver ki
+        icon: cilCheckCircle,
+      },
+      {
+        name: "Payslip Generation",
+        icon: cilLayers,
+      },
+    ],
+  },
+  {
     name: "Configuration",
     icon: cilEnvelopeClosed,
     items: [
@@ -39,7 +72,7 @@ export const MENU_CONFIG = [
   },
   {
     name: "Settings",
-    icon: cilChart,
+    icon: cilSettings,
     items: [
       {
         name: "Salary Formula",
@@ -47,9 +80,19 @@ export const MENU_CONFIG = [
       },
     ],
   },
+  {
+    name: "Reports",
+    icon: cilChart,
+    items: [
+      {
+        name: "Payroll Report",
+        icon: cilChart,
+      },
+    ],
+  },
 ];
 
-// For Privileges Modal Table - Same structure with 3 groups
+// For Privileges Modal Table - Same structure with 5 groups
 export const PRIVILEGE_MENU_CONFIG = [
   {
     name: "Masters",
@@ -77,6 +120,28 @@ export const PRIVILEGE_MENU_CONFIG = [
     ],
   },
   {
+    name: "Transactions",
+    icon: cilSwapHorizontal,
+    items: [
+      {
+        name: "Payroll Maker",
+        icon: cilChart,
+      },
+      {
+        name: "Payroll Checker",
+        icon: cilChart,
+      },
+      {
+        name: "Payroll Approver", // 👈 CHANGED: Approval nunchi Payroll Approver ki
+        icon: cilCheckCircle,
+      },
+      {
+        name: "Payslip Generation",
+        icon: cilLayers,
+      },
+    ],
+  },
+  {
     name: "Configuration",
     icon: cilEnvelopeClosed,
     items: [
@@ -88,10 +153,20 @@ export const PRIVILEGE_MENU_CONFIG = [
   },
   {
     name: "Settings",
-    icon: cilChart,
+    icon: cilSettings,
     items: [
       {
         name: "Salary Formula",
+        icon: cilChart,
+      },
+    ],
+  },
+  {
+    name: "Reports",
+    icon: cilChart,
+    items: [
+      {
+        name: "Payroll Report",
         icon: cilChart,
       },
     ],

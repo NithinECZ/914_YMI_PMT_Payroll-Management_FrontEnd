@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react'
 import DataTable from 'react-data-table-component'
+import Select from 'react-select'
 import {
   CButton,
   CFormInput,
-  CFormSelect,
   CRow,
   CCol,
   CCard,
@@ -31,6 +31,8 @@ import {
   FaLock,
   FaSearch,
   FaTimes,
+  FaChevronDown,
+  FaEnvelope,
 } from 'react-icons/fa'
 import { toast } from 'react-toastify'
 import API from '../../api.js'
@@ -39,8 +41,13 @@ import '../../assets/CSS/user.css'
 import { MENU_CONFIG, PRIVILEGE_MENU_CONFIG } from '../menuConfig'
 import usePrivilege from '../hooks/usePrivilege'
 
-// User Type options as required
-const USER_TYPE_OPTIONS = ['MAKER', 'CHECKER', 'APPROVER', 'ADMIN', 'SUPER ADMIN']
+const USER_TYPE_OPTIONS = [
+  { value: 'MAKER', label: 'MAKER' },
+  { value: 'CHECKER', label: 'CHECKER' },
+  { value: 'APPROVER', label: 'APPROVER' },
+  { value: 'ADMIN', label: 'ADMIN' },
+  { value: 'SUPER ADMIN', label: 'SUPER ADMIN' },
+]
 
 const customStyles = {
   rows: { style: { minHeight: '38px' } },
@@ -53,6 +60,7 @@ const customStyles = {
       paddingBottom: '4px',
       background: '#f1f4f9',
       textTransform: 'uppercase',
+      flex: '1 1 auto',
     },
   },
   cells: {
@@ -61,6 +69,12 @@ const customStyles = {
       fontSize: '13px',
       paddingTop: '0px',
       paddingBottom: '0px',
+      flex: '1 1 auto',
+    },
+  },
+  table: {
+    style: {
+      tableLayout: 'fixed',
     },
   },
 }
@@ -81,12 +95,55 @@ const fieldIconStyle = {
   color: '#9ca3af',
   fontSize: '14px',
   pointerEvents: 'none',
+  zIndex: 2,
+}
+
+const selectStyles = {
+  control: (base, state) => ({
+    ...base,
+    minHeight: 38,
+    height: 38,
+    fontSize: '13px',
+    borderColor: state.isFocused ? '#6b4fa1' : '#d1d5db',
+    boxShadow: state.isFocused ? '0 0 0 1px #6b4fa1' : 'none',
+    '&:hover': { borderColor: state.isFocused ? '#6b4fa1' : '#9ca3af' },
+    paddingLeft: '26px',
+  }),
+  valueContainer: (base) => ({
+    ...base,
+    height: 38,
+    padding: '0 8px',
+  }),
+  input: (base) => ({
+    ...base,
+    margin: 0,
+    padding: 0,
+  }),
+  indicatorsContainer: (base) => ({
+    ...base,
+    height: 38,
+  }),
+  placeholder: (base) => ({
+    ...base,
+    color: '#9ca3af',
+    fontSize: '13px',
+  }),
+  singleValue: (base) => ({
+    ...base,
+    fontSize: '13px',
+  }),
+  menu: (base) => ({
+    ...base,
+    zIndex: 9999,
+    fontSize: '13px',
+  }),
 }
 
 const EMPTY_FORM = {
   userId: '',
   userName: '',
   userType: '',
+  emailId: '',
   password: '',
   confirmPassword: '',
   isActive: true,
@@ -96,6 +153,7 @@ const EMPTY_ERRORS = {
   userId: '',
   userName: '',
   userType: '',
+  emailId: '',
   password: '',
   confirmPassword: '',
 }
@@ -109,7 +167,6 @@ const getLoggedInUser = () => {
   }
 }
 
-// ========== Same DisabledFieldWrapper used in EmployeeMaster ==========
 const DisabledFieldWrapper = ({ children, disabled = true }) => (
   <div
     style={{
@@ -140,7 +197,8 @@ const DisabledFieldWrapper = ({ children, disabled = true }) => (
 const UserMaster = () => {
   const codeRef = useRef()
   const deleteBtnRef = useRef()
-
+  const passwordRef = useRef()
+  const confirmPasswordRef = useRef()
   const [users, setUsers] = useState([])
   const [form, setForm] = useState(EMPTY_FORM)
   const [errors, setErrors] = useState(EMPTY_ERRORS)
@@ -153,32 +211,23 @@ const UserMaster = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [activeCardFilter, setActiveCardFilter] = useState('ALL')
-
   const [showPrivilegeModal, setShowPrivilegeModal] = useState(false)
   const [selectedUser, setSelectedUser] = useState(null)
   const [privileges, setPrivileges] = useState([])
+  const [expandedGroups, setExpandedGroups] = useState({
+    Masters: true,
+    Transactions: true,
+    Configuration: true,
+    Settings: true,
+    Reports: true,
+  })
 
-  // Custom dropdown state
-  const [openUserType, setOpenUserType] = useState(false)
-
-  // privilege checks
   const { canEdit, canDelete } = usePrivilege()
   const canEditUser = canEdit('User Master')
   const canDeleteUser = canDelete('User Master')
 
   useEffect(() => {
     loadUsers()
-  }, [])
-
-  // Close custom dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (!e.target.closest('.custom-select-wrapper')) {
-        setOpenUserType(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
   useEffect(() => {
@@ -209,7 +258,6 @@ const UserMaster = () => {
   const handleChange = (e) => {
     const { name, value } = e.target
     let v = value
-
     switch (name) {
       case 'userId':
         v = v.toUpperCase().replace(/[^A-Z0-9]/g, '')
@@ -218,17 +266,20 @@ const UserMaster = () => {
       case 'confirmPassword':
         v = v.replace(/\s/g, '')
         break
+      case 'emailId':
+        v = v.toLowerCase()
+        break
       default:
         v = v.toUpperCase()
         break
     }
-
     setForm((prev) => ({ ...prev, [name]: v }))
     clearError(name)
   }
 
   const isStrongPassword = (pwd) => {
     if (pwd.length < 7) return 'Password must be at least 7 characters'
+    if (!/^[A-Z]/.test(pwd)) return 'Password must start with a capital letter'
     if (!/[a-zA-Z]/.test(pwd)) return 'Password must contain at least one letter'
     if (!/[0-9]/.test(pwd)) return 'Password must contain at least one number'
     if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(pwd))
@@ -236,12 +287,77 @@ const UserMaster = () => {
     return ''
   }
 
+  const getPasswordRules = (pwd) => {
+    return {
+      length: pwd.length >= 7,
+      capital: /^[A-Z]/.test(pwd),
+      letter: /[a-zA-Z]/.test(pwd),
+      number: /[0-9]/.test(pwd),
+      special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(pwd),
+    }
+  }
+
+  const isPasswordFullyValid = (pwd) => {
+    const rules = getPasswordRules(pwd)
+    return rules.length && rules.capital && rules.letter && rules.number && rules.special
+  }
+
+  const isValidEmail = (email) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  }
+
+  // Enter key on Password field: attempt to move to Confirm Password.
+  // The actual gate is handleConfirmPasswordFocus below, so this covers
+  // Enter the same way click/Tab are covered.
+  const handlePasswordKeyDown = (e) => {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    confirmPasswordRef.current?.focus()
+  }
+
+  // Guards Confirm Password from being entered (by click, Tab, or Enter)
+  // until every password rule is satisfied. Bounces focus back to Password.
+  const handleConfirmPasswordFocus = () => {
+    if (!isPasswordFullyValid(form.password)) {
+      toast.error('Please first enter the password satisfying all the mentioned requirements')
+      confirmPasswordRef.current?.blur()
+      setTimeout(() => passwordRef.current?.focus(), 0)
+    }
+  }
+
+  const PasswordStrengthRule = ({ label, isValid }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', marginTop: '6px' }}>
+      <div
+        style={{
+          width: '16px',
+          height: '16px',
+          borderRadius: '50%',
+          background: isValid ? '#10b981' : '#e5e7eb',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#fff',
+          fontWeight: 'bold',
+          flexShrink: 0,
+        }}
+      >
+        {isValid ? '✓' : ''}
+      </div>
+      <span style={{ color: isValid ? '#10b981' : '#6b7280' }}>{label}</span>
+    </div>
+  )
+
   const validate = () => {
     const temp = { ...EMPTY_ERRORS }
-
     if (!form.userId.trim()) temp.userId = 'User Id is required'
     if (!form.userName.trim()) temp.userName = 'User Name is required'
     if (!form.userType) temp.userType = 'User Type is required'
+
+    if (!form.emailId.trim()) {
+      temp.emailId = 'Email Id is required'
+    } else if (!isValidEmail(form.emailId)) {
+      temp.emailId = 'Invalid Email format'
+    }
 
     if (!editId) {
       if (!form.password) {
@@ -250,7 +366,6 @@ const UserMaster = () => {
         const pwdError = isStrongPassword(form.password)
         if (pwdError) temp.password = pwdError
       }
-
       if (!form.confirmPassword) {
         temp.confirmPassword = 'Confirm Password is required'
       } else if (form.password !== form.confirmPassword) {
@@ -266,7 +381,6 @@ const UserMaster = () => {
           temp.confirmPassword = 'Passwords do not match'
       }
     }
-
     setErrors(temp)
     return !Object.values(temp).some((x) => x)
   }
@@ -274,16 +388,15 @@ const UserMaster = () => {
   const handleSubmit = async () => {
     if (!validate()) return
     const loggedInUser = getLoggedInUser()
-
     const payload = {
       userId: form.userId.trim(),
       userName: form.userName.trim(),
       userType: form.userType,
+      emailId: form.emailId.trim(),
       password: form.password,
       modifiedBy: loggedInUser?.userName || 'SYSTEM',
       isActive: editId ? form.isActive : true,
     }
-
     try {
       if (editId) {
         await API.put(`/UserMaster/${editId}`, payload)
@@ -294,11 +407,9 @@ const UserMaster = () => {
         const res = await API.post('/UserMaster', payload)
         toast.success('User Saved Successfully')
         await loadUsers()
-
         const newUser = { id: res.data?.id, userName: payload.userName, userType: payload.userType }
         resetForm()
         setTimeout(() => codeRef.current?.focus(), 200)
-
         if (newUser.id) {
           await openPrivilege(newUser)
         }
@@ -312,14 +423,14 @@ const UserMaster = () => {
     try {
       const res = await API.get(`/UserMaster/${row.id}`)
       const u = res.data
-
       setEditId(row.id)
       setForm({
         userId: u.userId || '',
         userName: u.userName || '',
         userType: u.userType || '',
-        password: '',
-        confirmPassword: '',
+        emailId: u.emailId || '',
+        password: u.password || '',
+        confirmPassword: u.password || '',
         isActive: u.status === '1',
       })
       setErrors(EMPTY_ERRORS)
@@ -351,7 +462,6 @@ const UserMaster = () => {
     setEditId(null)
     setShowPassword(false)
     setShowConfirm(false)
-    setOpenUserType(false)
   }
 
   const openForm = () => {
@@ -377,20 +487,18 @@ const UserMaster = () => {
 
   const filtered = useMemo(() => {
     let rows = users
-
     if (activeCardFilter === 'Active') {
       rows = rows.filter((u) => u.status === '1')
     } else if (activeCardFilter === 'Inactive') {
       rows = rows.filter((u) => u.status !== '1')
     }
-
     const q = search.trim().toLowerCase()
     if (!q) return rows
-
     return rows.filter(
       (u) =>
         (u.userId || '').toLowerCase().includes(q) ||
-        (u.userName || '').toLowerCase().includes(q)
+        (u.userName || '').toLowerCase().includes(q) ||
+        (u.emailId || '').toLowerCase().includes(q)
     )
   }, [users, search, activeCardFilter])
 
@@ -398,7 +506,6 @@ const UserMaster = () => {
     const totalUsers = users.length
     const activeUsers = users.filter((u) => u.status === '1').length
     const inactiveUsers = totalUsers - activeUsers
-
     return {
       totalUsers,
       activeUsers,
@@ -418,14 +525,11 @@ const UserMaster = () => {
 
   const openPrivilege = async (user) => {
     setSelectedUser(user)
-
     const res = await API.get(`/UserMaster/privileges/${user.id}`)
-
     const mapped = PRIVILEGE_MENU_CONFIG.flatMap((menu) => {
       const menus = []
       if (menu.items) menus.push(...menu.items)
       else menus.push(menu)
-
       return menus.map((m) => {
         const existing = res.data.find((x) => x.menuName === m.name)
         return {
@@ -437,16 +541,13 @@ const UserMaster = () => {
         }
       })
     })
-
     setPrivileges(mapped)
     setShowPrivilegeModal(true)
   }
 
   const handlePrivilegeChange = (index, field) => {
     if (index === -1) return
-
     const updated = [...privileges]
-
     if (field === 'all') {
       const val = !(updated[index].canView && updated[index].canEdit && updated[index].canDelete)
       updated[index] = { ...updated[index], canView: val, canEdit: val, canDelete: val }
@@ -457,7 +558,6 @@ const UserMaster = () => {
     } else if (field === 'canDelete') {
       updated[index].canDelete = !updated[index].canDelete
     }
-
     setPrivileges(updated)
   }
 
@@ -486,7 +586,6 @@ const UserMaster = () => {
       toast.error('Please select at least one privilege.')
       return
     }
-
     const payload = privileges
       .filter((p) => p.canView || p.canEdit || p.canDelete)
       .map((p) => ({
@@ -496,24 +595,38 @@ const UserMaster = () => {
         canEdit: p.canEdit,
         canDelete: p.canDelete,
       }))
-
     try {
       await API.post('/UserMaster/privileges', payload)
       toast.success('Privileges Saved')
       setShowPrivilegeModal(false)
-
       window.dispatchEvent(new Event('privilegesUpdated'))
     } catch {
       toast.error('Failed to save privileges')
     }
   }
 
+  const toggleGroup = (groupName) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [groupName]: !prev[groupName],
+    }))
+  }
+
   const columns = [
-    { name: 'S.No', selector: (_, i) => i + 1, width: '70px' },
-    { name: 'User Id', selector: (row) => row.userId, sortable: true },
-    { name: 'User Name', selector: (row) => row.userName, sortable: true },
+    { name: 'S.No', selector: (_, i) => i + 1, width: '8%', style: { flex: '0 0 8%' } },
+    { name: 'User Id', selector: (row) => row.userId, sortable: true, width: '14%', style: { flex: '0 0 14%' } },
+    { name: 'User Name', selector: (row) => row.userName, sortable: true, width: '16%', style: { flex: '0 0 16%' } },
+    {
+      name: 'Email Id',
+      selector: (row) => row.emailId || '-',
+      sortable: true,
+      width: '18%',
+      style: { flex: '0 0 18%' },
+    },
     {
       name: 'User Type',
+      width: '14%',
+      style: { flex: '0 0 14%' },
       cell: (row) => {
         const s = userTypeBadgeStyle(row.userType)
         return (
@@ -526,6 +639,8 @@ const UserMaster = () => {
     {
       name: 'Status',
       center: true,
+      width: '12%',
+      style: { flex: '0 0 12%' },
       cell: (row) => {
         const active = row.status === '1'
         return (
@@ -547,20 +662,20 @@ const UserMaster = () => {
     {
       name: 'Actions',
       center: true,
+      width: '18%',
+      style: { flex: '0 0 18%' },
       cell: (row) => (
-        <div style={{ display: 'flex', gap: '6px' }}>
+        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
           {canEditUser && (
             <button className="table-action-btn edit-btn" onClick={() => handleEdit(row)}>
               <FaEdit />
             </button>
           )}
-
           {canEditUser && (
             <button className="table-action-btn privilege-btn" onClick={() => openPrivilege(row)}>
               <FaUsers />
             </button>
           )}
-
           {canDeleteUser && (
             <button
               className="table-action-btn delete-btn"
@@ -590,6 +705,8 @@ const UserMaster = () => {
     { label: 'Inactive Users', value: stats.inactiveUsers, icon: FaUserSlash, bg: '#fde8e8', fg: '#dc2626', filterValue: 'Inactive' },
   ]
 
+  const selectedUserType = USER_TYPE_OPTIONS.find((opt) => opt.value === form.userType) || null
+
   return (
     <div className="user-master-page">
       {showForm && (
@@ -604,7 +721,7 @@ const UserMaster = () => {
               />
             </div>
 
-            {/* ========== TOP ROW: User Id | User Name | User Type ========== */}
+            {/* ===================== ROW 1 ===================== */}
             <CRow className="g-3" autoComplete="off">
               <CCol md={4}>
                 {fieldLabel('User Id')}
@@ -644,55 +761,62 @@ const UserMaster = () => {
                 {errors.userName && <small className="text-danger">{errors.userName}</small>}
               </CCol>
 
-              {/* ========== CUSTOM ANIMATED DROPDOWN ========== */}
               <CCol md={4}>
                 {fieldLabel('User Type')}
-                <div className="custom-select-wrapper" style={{ position: 'relative' }}>
+                <div style={{ position: 'relative' }}>
                   <FaUserTag style={fieldIconStyle} />
-
-                  <div
-                    className={`custom-select-trigger ${!form.userType ? 'custom-select-placeholder' : ''} ${errors.userType ? 'error' : ''} ${openUserType ? 'open' : ''}`}
-                    onClick={() => setOpenUserType(!openUserType)}
-                    style={{ paddingLeft: '34px' }}
-                  >
-                    <span>{form.userType || 'Select user type'}</span>
-                    <span className="custom-select-arrow">▼</span>
-                  </div>
-
-                  <div className={`custom-select-dropdown ${openUserType ? 'open' : ''}`}>
-                    {USER_TYPE_OPTIONS.map((u) => (
-                      <div
-                        key={u}
-                        className={`custom-select-option ${form.userType === u ? 'selected' : ''}`}
-                        onClick={() => {
-                          setForm((prev) => ({ ...prev, userType: u }))
-                          clearError('userType')
-                          setOpenUserType(false)
-                        }}
-                      >
-                        {u}
-                      </div>
-                    ))}
-                  </div>
+                  <Select
+                    options={USER_TYPE_OPTIONS}
+                    value={selectedUserType}
+                    onChange={(opt) => {
+                      setForm((prev) => ({ ...prev, userType: opt ? opt.value : '' }))
+                      clearError('userType')
+                    }}
+                    placeholder="Select user type"
+                    isClearable
+                    styles={selectStyles}
+                    classNamePrefix="react-select"
+                    className={errors.userType ? 'error-select' : ''}
+                  />
                 </div>
                 {errors.userType && <small className="text-danger">{errors.userType}</small>}
               </CCol>
             </CRow>
 
-            {/* ========== BOTTOM ROW: Password + Confirm Password (same row) ========== */}
+            {/* ===================== ROW 2 ===================== */}
             <CRow className="g-3 mt-1" autoComplete="off">
+              <CCol md={4}>
+                {fieldLabel('Email Id')}
+                <div style={{ position: 'relative' }}>
+                  <FaEnvelope style={fieldIconStyle} />
+                  <CFormInput
+                    name="emailId"
+                    type="email"
+                    placeholder="Enter email id"
+                    value={form.emailId}
+                    style={{ paddingLeft: '34px' }}
+                    className={errors.emailId ? 'error-input' : ''}
+                    onChange={handleChange}
+                    autoComplete="off"
+                  />
+                </div>
+                {errors.emailId && <small className="text-danger">{errors.emailId}</small>}
+              </CCol>
+
               <CCol md={4}>
                 {fieldLabel('Password', !editId)}
                 <div style={{ position: 'relative' }}>
                   <FaLock style={fieldIconStyle} />
                   <CFormInput
+                    ref={passwordRef}
                     type={showPassword ? 'text' : 'password'}
                     name="password"
-                    placeholder={editId ? 'Leave blank to keep current password' : 'Enter password'}
+                    placeholder="Enter password"
                     value={form.password}
                     style={{ paddingLeft: '34px', paddingRight: '36px' }}
                     className={errors.password ? 'error-input' : ''}
                     onChange={handleChange}
+                    onKeyDown={handlePasswordKeyDown}
                     autoComplete="new-password"
                   />
                   <span
@@ -703,6 +827,22 @@ const UserMaster = () => {
                   </span>
                 </div>
                 {errors.password && <small className="text-danger">{errors.password}</small>}
+                {form.password && (
+                  <div style={{ marginTop: '8px', padding: '10px', background: '#f9fafb', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
+                    {(() => {
+                      const rules = getPasswordRules(form.password)
+                      return (
+                        <>
+                          <PasswordStrengthRule label="At least 7 characters" isValid={rules.length} />
+                          <PasswordStrengthRule label="Start with capital letter" isValid={rules.capital} />
+                          <PasswordStrengthRule label="Contains letter (a-z, A-Z)" isValid={rules.letter} />
+                          <PasswordStrengthRule label="Contains number (0-9)" isValid={rules.number} />
+                          <PasswordStrengthRule label="Contains special character (!@#$%...)" isValid={rules.special} />
+                        </>
+                      )
+                    })()}
+                  </div>
+                )}
               </CCol>
 
               <CCol md={4}>
@@ -710,6 +850,7 @@ const UserMaster = () => {
                 <div style={{ position: 'relative' }}>
                   <FaLock style={fieldIconStyle} />
                   <CFormInput
+                    ref={confirmPasswordRef}
                     type={showConfirm ? 'text' : 'password'}
                     name="confirmPassword"
                     placeholder="Re-enter password"
@@ -717,6 +858,7 @@ const UserMaster = () => {
                     style={{ paddingLeft: '34px', paddingRight: '36px' }}
                     className={errors.confirmPassword ? 'error-input' : ''}
                     onChange={handleChange}
+                    onFocus={handleConfirmPasswordFocus}
                     autoComplete="new-password"
                   />
                   <span
@@ -727,49 +869,53 @@ const UserMaster = () => {
                   </span>
                 </div>
                 {errors.confirmPassword && <small className="text-danger">{errors.confirmPassword}</small>}
+                {form.password && form.confirmPassword && form.password === form.confirmPassword && (
+                  <small style={{ color: '#10b981', fontWeight: 600 }}>✓ Passwords match</small>
+                )}
               </CCol>
+            </CRow>
 
-              {editId && (
-                <CCol md={4} className="d-flex align-items-end">
-                  <div style={{ marginBottom: '2px' }}>
-                    {fieldLabel('Status', false)}
+            {/* ===================== ROW 3 - STATUS (Edit only) ===================== */}
+            {editId && (
+              <CRow className="g-3 mt-1">
+                <CCol md={4}>
+                  {fieldLabel('Status', false)}
+                  <div
+                    onClick={() => setForm((prev) => ({ ...prev, isActive: !prev.isActive }))}
+                    style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none', marginTop: '6px' }}
+                  >
                     <div
-                      onClick={() => setForm((prev) => ({ ...prev, isActive: !prev.isActive }))}
-                      style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none' }}
+                      style={{
+                        width: '44px',
+                        height: '24px',
+                        borderRadius: '999px',
+                        background: form.isActive ? '#6b4fa1' : '#d1d5db',
+                        position: 'relative',
+                        transition: 'background 0.2s ease',
+                        flexShrink: 0,
+                      }}
                     >
                       <div
                         style={{
-                          width: '44px',
-                          height: '24px',
-                          borderRadius: '999px',
-                          background: form.isActive ? '#6b4fa1' : '#d1d5db',
-                          position: 'relative',
-                          transition: 'background 0.2s ease',
-                          flexShrink: 0,
+                          position: 'absolute',
+                          top: '2px',
+                          left: form.isActive ? '22px' : '2px',
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '50%',
+                          background: '#fff',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                          transition: 'left 0.2s ease',
                         }}
-                      >
-                        <div
-                          style={{
-                            position: 'absolute',
-                            top: '2px',
-                            left: form.isActive ? '22px' : '2px',
-                            width: '20px',
-                            height: '20px',
-                            borderRadius: '50%',
-                            background: '#fff',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-                            transition: 'left 0.2s ease',
-                          }}
-                        />
-                      </div>
-                      <span style={{ fontSize: '14px', fontWeight: 600, color: form.isActive ? '#6b4fa1' : '#6b7280' }}>
-                        {form.isActive ? 'Active' : 'Inactive'}
-                      </span>
+                      />
                     </div>
+                    <span style={{ fontSize: '14px', fontWeight: 600, color: form.isActive ? '#6b4fa1' : '#6b7280' }}>
+                      {form.isActive ? 'Active' : 'Inactive'}
+                    </span>
                   </div>
                 </CCol>
-              )}
-            </CRow>
+              </CRow>
+            )}
 
             <div className="form-button-area">
               <CButton className={editId ? 'update-btn' : 'save-btn'} onClick={handleSubmit}>
@@ -826,7 +972,6 @@ const UserMaster = () => {
               </div>
             )
           })}
-
           <div onClick={openForm} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
             <div
               style={{
@@ -844,7 +989,7 @@ const UserMaster = () => {
             >
               <FaPlus />
             </div>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#111827', marginTop: '4px', textAlign: 'center' }}>
+            <span style={{ fontSize: '12px', fontWeight: '600', color: '#111827', marginTop: '4px', textAlign: 'center' }}>
               Add<br />User
             </span>
           </div>
@@ -858,7 +1003,7 @@ const UserMaster = () => {
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <FaSearch style={{ position: 'absolute', left: '12px', color: '#9ca3af', fontSize: '14px', pointerEvents: 'none' }} />
               <CFormInput
-                placeholder="Search by User Id or Name..."
+                placeholder="Search by User Id, Name or Email..."
                 className="search-box"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -872,7 +1017,6 @@ const UserMaster = () => {
               )}
             </div>
           </div>
-
           <DataTable
             columns={columns}
             data={filtered}
@@ -905,6 +1049,7 @@ const UserMaster = () => {
         </CModalFooter>
       </CModal>
 
+      {/* ==================== PRIVILEGE MODAL ==================== */}
       <CModal visible={showPrivilegeModal} onClose={handleClosePrivilegeModal} size="lg" backdrop="static">
         <CModalHeader className="privilege-header" closeButton={false}>
           <CModalTitle className="privilege-title">
@@ -913,13 +1058,12 @@ const UserMaster = () => {
             <span className="privilege-user">- {selectedUser?.userName}</span>
           </CModalTitle>
         </CModalHeader>
-
         <CModalBody>
-          <table className="table table-bordered text-center privilege-table">
+          <table className="table table-bordered text-center privilege-table" style={{ tableLayout: 'fixed' }}>
             <thead>
               <tr>
-                <th>Menus</th>
-                <th>
+                <th style={{ width: '40%', background: '#dfe6f1' }}>Menus</th>
+                <th style={{ width: '15%', background: '#dfe6f1' }}>
                   All <br />
                   <input
                     type="checkbox"
@@ -927,7 +1071,7 @@ const UserMaster = () => {
                     onChange={(e) => handleHeaderChange('all', e.target.checked)}
                   />
                 </th>
-                <th>
+                <th style={{ width: '15%', background: '#dfe6f1' }}>
                   View <br />
                   <input
                     type="checkbox"
@@ -935,7 +1079,7 @@ const UserMaster = () => {
                     onChange={(e) => handleHeaderChange('canView', e.target.checked)}
                   />
                 </th>
-                <th>
+                <th style={{ width: '15%', background: '#dfe6f1' }}>
                   Edit <br />
                   <input
                     type="checkbox"
@@ -943,7 +1087,7 @@ const UserMaster = () => {
                     onChange={(e) => handleHeaderChange('canEdit', e.target.checked)}
                   />
                 </th>
-                <th>
+                <th style={{ width: '15%', background: '#dfe6f1' }}>
                   Delete <br />
                   <input
                     type="checkbox"
@@ -953,98 +1097,120 @@ const UserMaster = () => {
                 </th>
               </tr>
             </thead>
-
             <tbody>
               {PRIVILEGE_MENU_CONFIG.map((menu) => {
                 if (menu.items) {
                   return (
                     <React.Fragment key={menu.name}>
-                      <tr>
-                        <td colSpan="5" style={{ fontWeight: '600', background: '#dfe6f1', textAlign: 'left' }}>
-                          {menu.name}
+                      <tr
+                        onClick={() => toggleGroup(menu.name)}
+                        style={{
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                        }}
+                      >
+                        <td
+                          colSpan="5"
+                          style={{
+                            fontWeight: '600',
+                            textAlign: 'left',
+                            padding: '10px 12px',
+                            background: '#dfe6f1',
+                            borderBottom: '1px solid #c5d0e0',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <FaChevronDown
+                              size={14}
+                              style={{
+                                transform: expandedGroups[menu.name] ? 'rotate(0deg)' : 'rotate(-90deg)',
+                                transition: 'transform 0.2s ease',
+                              }}
+                            />
+                            <span>{menu.name}</span>
+                          </div>
                         </td>
                       </tr>
 
-                      {menu.items.map((child) => {
-                        const childIndex = privileges.findIndex((x) => x.menuName === child.name)
-                        const cp = privileges[childIndex] || {}
-
-                        return (
-                          <tr key={child.name}>
-                            <td className="menu-cell" style={{ paddingLeft: '35px' }}>
-                              <div className="d-flex align-items-center gap-2">
-                                <CIcon icon={child.icon} size="sm" />
-                                {child.name}
-                              </div>
-                            </td>
-                            <td>
-                              <input
-                                type="checkbox"
-                                checked={cp.canView && cp.canEdit && cp.canDelete}
-                                onChange={() => handlePrivilegeChange(childIndex, 'all')}
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="checkbox"
-                                checked={cp.canView || false}
-                                onChange={() => handlePrivilegeChange(childIndex, 'canView')}
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="checkbox"
-                                checked={cp.canEdit || false}
-                                onChange={() => handlePrivilegeChange(childIndex, 'canEdit')}
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="checkbox"
-                                checked={cp.canDelete || false}
-                                onChange={() => handlePrivilegeChange(childIndex, 'canDelete')}
-                              />
-                            </td>
-                          </tr>
-                        )
-                      })}
+                      {expandedGroups[menu.name] &&
+                        menu.items.map((child) => {
+                          const childIndex = privileges.findIndex((x) => x.menuName === child.name)
+                          const cp = privileges[childIndex] || {}
+                          return (
+                            <tr key={child.name}>
+                              <td className="menu-cell" style={{ paddingLeft: '35px', width: '40%' }}>
+                                <div className="d-flex align-items-center gap-2">
+                                  <CIcon icon={child.icon} size="sm" />
+                                  {child.name}
+                                </div>
+                              </td>
+                              <td style={{ width: '15%' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={cp.canView && cp.canEdit && cp.canDelete}
+                                  onChange={() => handlePrivilegeChange(childIndex, 'all')}
+                                />
+                              </td>
+                              <td style={{ width: '15%' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={cp.canView || false}
+                                  onChange={() => handlePrivilegeChange(childIndex, 'canView')}
+                                />
+                              </td>
+                              <td style={{ width: '15%' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={cp.canEdit || false}
+                                  onChange={() => handlePrivilegeChange(childIndex, 'canEdit')}
+                                />
+                              </td>
+                              <td style={{ width: '15%' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={cp.canDelete || false}
+                                  onChange={() => handlePrivilegeChange(childIndex, 'canDelete')}
+                                />
+                              </td>
+                            </tr>
+                          )
+                        })}
                     </React.Fragment>
                   )
                 }
 
                 const index = privileges.findIndex((x) => x.menuName === menu.name)
                 const p = privileges[index] || {}
-
                 return (
                   <tr key={menu.name}>
-                    <td className="menu-cell">
+                    <td className="menu-cell" style={{ width: '40%' }}>
                       <div className="d-flex align-items-center gap-2">
                         <CIcon icon={menu.icon} size="sm" />
                         {menu.name}
                       </div>
                     </td>
-                    <td>
+                    <td style={{ width: '15%' }}>
                       <input
                         type="checkbox"
                         checked={p.canView && p.canEdit && p.canDelete}
                         onChange={() => handlePrivilegeChange(index, 'all')}
                       />
                     </td>
-                    <td>
+                    <td style={{ width: '15%' }}>
                       <input
                         type="checkbox"
                         checked={p.canView || false}
                         onChange={() => handlePrivilegeChange(index, 'canView')}
                       />
                     </td>
-                    <td>
+                    <td style={{ width: '15%' }}>
                       <input
                         type="checkbox"
                         checked={p.canEdit || false}
                         onChange={() => handlePrivilegeChange(index, 'canEdit')}
                       />
                     </td>
-                    <td>
+                    <td style={{ width: '15%' }}>
                       <input
                         type="checkbox"
                         checked={p.canDelete || false}
@@ -1057,7 +1223,6 @@ const UserMaster = () => {
             </tbody>
           </table>
         </CModalBody>
-
         <CModalFooter className="justify-content-center gap-3">
           <CButton className="privilege-save-btn" onClick={savePrivileges}>
             Save Privilege

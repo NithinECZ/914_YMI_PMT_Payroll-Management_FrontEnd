@@ -1,13 +1,13 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { CButton, CForm, CFormInput } from '@coreui/react'
 import { FaUser, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa'
 import './Login.css'
 import leftImg from '../../../assets/images/YMT_LOGIN.png'
-import profileImg from '../../../assets/images/Profile.png'
+import profileImg from '../../../assets/images/Vector 5.png'
 import API from '../../../api.js'
-
+const buildDate = new Date().toLocaleDateString('en-GB')
 const fieldIconStyle = {
   position: 'absolute',
   left: '12px',
@@ -24,15 +24,36 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
-    username: '',
+    userId: '',
     password: '',
   })
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const userIdFromLink = params.get('userId')
+
+    if (userIdFromLink) {
+      const cleanUserId = userIdFromLink.toUpperCase().replace(/[^A-Z0-9]/g, '')
+      setForm((prev) => ({
+        ...prev,
+        userId: cleanUserId,
+      }))
+    }
+  }, []) 
 
   const handleChange = (e) => {
     const { name, value } = e.target
 
-    // Password should not contain spaces
     if (name === 'password' && /\s/.test(value)) {
+      return
+    }
+
+    // UserId → uppercase + only letters & numbers
+    if (name === 'userId') {
+      setForm((prev) => ({
+        ...prev,
+        [name]: value.toUpperCase().replace(/[^A-Z0-9]/g, ''),
+      }))
       return
     }
 
@@ -46,16 +67,13 @@ const Login = () => {
     if (e && e.preventDefault) e.preventDefault()
     if (e && e.stopPropagation) e.stopPropagation()
 
-    // Prevent double submit
     if (loading) return
 
-    // Validate username and password
-    if (!form.username.trim() || !form.password.trim()) {
-      toast.error('Please enter username & password')
+    if (!form.userId.trim() || !form.password.trim()) {
+      toast.error('Please enter User Id & Password')
       return
     }
 
-    // Password space validation
     if (/\s/.test(form.password)) {
       toast.error('Password cannot contain spaces')
       return
@@ -65,15 +83,12 @@ const Login = () => {
 
     try {
       const res = await API.post('/Auth/login', {
-        username: form.username.trim(),
+        userId: form.userId.trim(),
         password: form.password,
       })
 
       console.log('Login response:', res.data)
 
-      // =========================================================
-      // LOGIN SUCCESS
-      // =========================================================
       if (res.data?.success) {
         const userData = {
           id: res.data.user?.id,
@@ -84,28 +99,17 @@ const Login = () => {
           status: res.data.user?.status,
         }
 
-        // Store logged-in user
         sessionStorage.setItem('user', JSON.stringify(userData))
-
-        // Notify other components
         window.dispatchEvent(new Event('storage'))
 
-        // Success message
         toast.success(res.data.message || 'Login Successful')
 
-        // ---------------------------------------------------------
-        // Navigate to User Master after successful login
-        // ---------------------------------------------------------
         setTimeout(() => {
           navigate('/masters/users')
         }, 500)
       } else {
-        // =========================================================
-        // LOGIN FAILED
-        // =========================================================
         toast.error(res.data?.message || 'Login Failed')
 
-        // 👈 NEW: Keep username visible, only clear password on failed login
         setForm((prev) => ({
           ...prev,
           password: '',
@@ -127,7 +131,6 @@ const Login = () => {
         toast.error('Something went wrong: ' + err.message)
       }
 
-      // 👈 NEW: Keep username visible, only clear password on failed login
       setForm((prev) => ({
         ...prev,
         password: '',
@@ -139,16 +142,10 @@ const Login = () => {
 
   return (
     <div className="login-container">
-      {/* ================================================ */}
-      {/* FULL WIDTH BACKGROUND IMAGE */}
-      {/* ================================================ */}
       <div className="left-panel">
         <img src={leftImg} alt="Background" />
       </div>
 
-      {/* ================================================ */}
-      {/* LOGIN CARD - CENTERED ON TOP OF BACKGROUND */}
-      {/* ================================================ */}
       <div className="login-box">
         {loading && (
           <div className="loading-overlay">
@@ -157,31 +154,30 @@ const Login = () => {
           </div>
         )}
 
-        {/* Profile Logo */}
         <div className="profile-logo-wrap">
           <img src={profileImg} alt="Profile" className="profile-logo" />
         </div>
 
         <p className="subtitle">
-          Sign in to continue to your account
+        Login to continue to your account
         </p>
 
         <CForm onSubmit={handleLogin}>
           {/* =====================================================
-              USERNAME
+              USER ID
           ====================================================== */}
           <div className="form-group">
             <label className="form-label">
-              Username
+              User Id
             </label>
 
             <div style={{ position: 'relative' }}>
               <FaUser style={fieldIconStyle} />
 
               <CFormInput
-                name="username"
-                placeholder="Enter your Username"
-                value={form.username}
+                name="userId"
+                placeholder="Enter your User Id"
+                value={form.userId}
                 onChange={handleChange}
                 className="form-control"
                 style={{
@@ -224,11 +220,8 @@ const Login = () => {
                 disabled={loading}
               />
 
-              {/* Show / Hide Password */}
               <span
-                onClick={() =>
-                  setShowPassword((prev) => !prev)
-                }
+                onClick={() => setShowPassword((prev) => !prev)}
                 style={{
                   position: 'absolute',
                   right: '14px',
@@ -239,18 +232,11 @@ const Login = () => {
                   fontSize: '14px',
                 }}
               >
-                {showPassword ? (
-                  <FaEyeSlash />
-                ) : (
-                  <FaEye />
-                )}
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
               </span>
             </div>
           </div>
 
-          {/* =====================================================
-              LOGIN BUTTON
-          ====================================================== */}
           <CButton
             type="submit"
             className="btn-login"
@@ -267,18 +253,12 @@ const Login = () => {
           </CButton>
         </CForm>
 
-        {/* =====================================================
-            BUILD INFORMATION
-        ====================================================== */}
-        <div className="build-info">
-          <span>Version:1.0</span>
-          <span>Build Date:16-09-2026</span>
-        </div>
+<div className="build-info">
+  <span>Version: 1.0</span>
+  <span>Build Date: {buildDate}</span>
+</div>
       </div>
 
-      {/* ================================================ */}
-      {/* POWERED BY */}
-      {/* ================================================ */}
       <div className="powered-by">
         Powered By Ecosoft Zolutions
       </div>

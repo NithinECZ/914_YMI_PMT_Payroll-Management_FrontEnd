@@ -102,7 +102,7 @@ const AppHeader = () => {
   return (
     <CHeader
       position="sticky"
-      className="mb-4 p-0"
+      className="p-0"
       ref={headerRef}
     >
       <CContainer

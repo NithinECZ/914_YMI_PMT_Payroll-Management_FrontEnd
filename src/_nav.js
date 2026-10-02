@@ -9,6 +9,9 @@ import {
   cilPeople,
   cilTruck,
   cilCalendar,
+  cilSettings,
+  cilSwapHorizontal,
+  cilCheckCircle,
 } from '@coreui/icons'
 import { CNavGroup, CNavItem } from '@coreui/react'
 
@@ -51,6 +54,37 @@ const _nav = [
     ],
   },
   {
+    component: CNavGroup,
+    name: 'Transactions',
+    icon: <CIcon icon={cilSwapHorizontal} customClassName="nav-icon" />,
+    items: [
+      {
+        component: CNavItem,
+        name: 'Payroll Maker',
+        to: '/transactions/payroll-maker',
+        icon: <CIcon icon={cilChart} customClassName="nav-icon" />,
+      },
+      {
+        component: CNavItem,
+        name: 'Payroll Checker',
+        to: '/transactions/payroll-checker',
+        icon: <CIcon icon={cilChart} customClassName="nav-icon" />,
+      },
+      {
+        component: CNavItem,
+        name: 'Payroll Approver', // 👈 CHANGED: Approval nunchi Payroll Approver ki, Checker kindha
+        to: '/transactions/payroll-approver', // 👈 CHANGED
+        icon: <CIcon icon={cilCheckCircle} customClassName="nav-icon" />,
+      },
+      {
+        component: CNavItem,
+        name: 'Payslip Generation',
+        to: '/transactions/payslip',
+        icon: <CIcon icon={cilLayers} customClassName="nav-icon" />,
+      },
+    ],
+  },
+  {
     component: CNavItem,
     name: 'Configuration',
     to: '/masters/mail-configuration',
@@ -60,7 +94,20 @@ const _nav = [
     component: CNavItem,
     name: 'Settings',
     to: '/masters/salary-formula',
+    icon: <CIcon icon={cilSettings} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavGroup,
+    name: 'Reports',
     icon: <CIcon icon={cilChart} customClassName="nav-icon" />,
+    items: [
+      {
+        component: CNavItem,
+        name: 'Payroll Report',
+        to: '/reports/payroll-report',
+        icon: <CIcon icon={cilChart} customClassName="nav-icon" />,
+      },
+    ],
   },
 ]
 

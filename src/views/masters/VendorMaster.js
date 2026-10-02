@@ -24,6 +24,7 @@ import {
   FaSearch,
   FaTimes,
   FaBuilding,
+  FaHashtag,
   FaEnvelope,
   FaPhone,
   FaMapMarkerAlt,
@@ -74,6 +75,7 @@ const fieldIconStyle = {
   color: '#9ca3af',
   fontSize: '14px',
   pointerEvents: 'none',
+  zIndex: 5,
 }
 
 const EMPTY_FORM = {
@@ -241,8 +243,6 @@ const VendorMaster = () => {
       temp.vendorContact = 'Contact must be 10 to 13 digits'
     }
 
-    if (!form.vendorLicense.trim()) temp.vendorLicense = 'License No. is required'
-
     setErrors(temp)
     return !Object.values(temp).some((x) => x)
   }
@@ -261,7 +261,7 @@ const VendorMaster = () => {
       vendorAddress: form.vendorAddress.trim() || null,
       vendorESIC: form.vendorESIC.trim() || null,
       vendorPF: form.vendorPF.trim() || null,
-      vendorLicense: form.vendorLicense.trim(),
+      vendorLicense: form.vendorLicense.trim() || null,
       modifiedBy: loggedInUser?.userName || 'SYSTEM',
       isActive: editId ? form.isActive : true,
     }
@@ -513,7 +513,7 @@ const VendorMaster = () => {
               <CCol md={4}>
                 {fieldLabel('Vendor Id')}
                 <div style={{ position: 'relative' }}>
-                  <FaBuilding style={fieldIconStyle} />
+                  <FaHashtag style={fieldIconStyle} />
                   <DisabledFieldWrapper disabled={!!editId}>
                     <CFormInput
                       ref={codeRef}
@@ -555,7 +555,7 @@ const VendorMaster = () => {
                   <CFormInput
                     name="vendorEmail"
                     type="email"
-                    placeholder="Enter email"
+                    placeholder="e.g. vendor@example.com"
                     value={form.vendorEmail}
                     style={{ paddingLeft: '34px' }}
                     className={errors.vendorEmail ? 'error-input' : ''}
@@ -575,7 +575,7 @@ const VendorMaster = () => {
                   <FaFileAlt style={fieldIconStyle} />
                   <CFormInput
                     name="vendorGSTIN"
-                    placeholder="15 characters"
+                    placeholder="e.g. 22AAAAA0000A1Z5"
                     value={form.vendorGSTIN}
                     style={{ paddingLeft: '34px' }}
                     className={errors.vendorGSTIN ? 'error-input' : ''}
@@ -593,7 +593,7 @@ const VendorMaster = () => {
                   <FaFileAlt style={fieldIconStyle} />
                   <CFormInput
                     name="vendorPAN"
-                    placeholder="10 characters"
+                    placeholder="e.g. AAAPL1234C"
                     value={form.vendorPAN}
                     style={{ paddingLeft: '34px' }}
                     className={errors.vendorPAN ? 'error-input' : ''}
@@ -611,7 +611,7 @@ const VendorMaster = () => {
                   <FaPhone style={fieldIconStyle} />
                   <CFormInput
                     name="vendorContact"
-                    placeholder="10 to 13 digits"
+                    placeholder="e.g. 9876543210"
                     value={form.vendorContact}
                     style={{ paddingLeft: '34px' }}
                     className={errors.vendorContact ? 'error-input' : ''}
@@ -680,7 +680,7 @@ const VendorMaster = () => {
                     <FaFileAlt style={fieldIconStyle} />
                     <CFormInput
                       name="vendorESIC"
-                      placeholder="Enter ESIC number"
+                      placeholder="e.g. 31001234560000999"
                       value={form.vendorESIC}
                       style={{ paddingLeft: '34px' }}
                       onChange={handleChange}
@@ -695,7 +695,7 @@ const VendorMaster = () => {
                     <FaFileAlt style={fieldIconStyle} />
                     <CFormInput
                       name="vendorPF"
-                      placeholder="Enter PF number"
+                      placeholder="e.g. MH/BAN/1234567/000/0012345"
                       value={form.vendorPF}
                       style={{ paddingLeft: '34px' }}
                       onChange={handleChange}
@@ -705,7 +705,7 @@ const VendorMaster = () => {
                 </CCol>
 
                 <CCol md={4}>
-                  {fieldLabel('License No.')}
+                  {fieldLabel('License No.', false)}
                   <div style={{ position: 'relative' }}>
                     <FaFileAlt style={fieldIconStyle} />
                     <CFormInput

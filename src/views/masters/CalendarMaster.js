@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react'
+import Select from 'react-select'
 import {
   CButton,
   CFormInput,
@@ -60,6 +61,66 @@ const MONTHS = [
 ]
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+// react-select options for Leave Type
+const HOLIDAY_TYPE_OPTIONS = HOLIDAY_TYPES.map((t) => ({ value: t, label: t }))
+
+// react-select styles (matches CFormSelect height)
+const selectStyles = {
+  control: (base, state) => ({
+    ...base,
+    minHeight: 38,
+    height: 38,
+    fontSize: '13px',
+    borderColor: state.isFocused ? '#6b4fa1' : '#d1d5db',
+    boxShadow: state.isFocused ? '0 0 0 1px #6b4fa1' : 'none',
+    '&:hover': { borderColor: state.isFocused ? '#6b4fa1' : '#9ca3af' },
+  }),
+  valueContainer: (base) => ({
+    ...base,
+    height: 38,
+    padding: '0 8px',
+  }),
+  input: (base) => ({
+    ...base,
+    margin: 0,
+    padding: 0,
+  }),
+  indicatorsContainer: (base) => ({
+    ...base,
+    height: 38,
+  }),
+  placeholder: (base) => ({
+    ...base,
+    color: '#9ca3af',
+    fontSize: '13px',
+  }),
+  singleValue: (base) => ({
+    ...base,
+    fontSize: '13px',
+  }),
+  menu: (base) => ({
+    ...base,
+    zIndex: 9999,
+    fontSize: '13px',
+  }),
+}
+
+// Icon-only Edit/Delete button (top-right of cell)
+const iconBtnStyle = (bg) => ({
+  width: '22px',
+  height: '22px',
+  padding: 0,
+  background: bg,
+  color: '#fff',
+  border: 'none',
+  borderRadius: '4px',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexShrink: 0,
+})
 
 const normalizeHolidayType = (type) => {
   if (!type) return type
@@ -160,6 +221,10 @@ const CalendarMaster = () => {
   const isMaintenance = form.holidayType === MAINTENANCE_TYPE
   // Range only for NEW Maintenance Leave — Edit is always single day
   const useRangeMode = isMaintenance && !editId
+
+  // Selected option for react-select
+  const selectedHolidayType =
+    HOLIDAY_TYPE_OPTIONS.find((opt) => opt.value === form.holidayType) || null
 
   const loadHolidaysForMonthYear = async (m = month, y = year) => {
     try {
@@ -881,19 +946,19 @@ const CalendarMaster = () => {
                 <label className="custom-label">
                   Leave Type <span className="required">*</span>
                 </label>
-                <CFormSelect
-                  name="holidayType"
-                  value={form.holidayType}
-                  onChange={handleChange}
-                  className={errors.holidayType ? 'error-input' : ''}
-                >
-                  <option value="">Select Leave Type</option>
-                  {HOLIDAY_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </CFormSelect>
+                <Select
+                  options={HOLIDAY_TYPE_OPTIONS}
+                  value={selectedHolidayType}
+                  onChange={(opt) => {
+                    setForm((prev) => ({ ...prev, holidayType: opt ? opt.value : '' }))
+                    clearError('holidayType')
+                  }}
+                  placeholder="Select Leave Type"
+                  isClearable
+                  styles={selectStyles}
+                  classNamePrefix="react-select"
+                  className={errors.holidayType ? 'error-select' : ''}
+                />
                 {errors.holidayType && (
                   <small className="text-danger">{errors.holidayType}</small>
                 )}
@@ -1450,64 +1515,33 @@ const CalendarMaster = () => {
                       >
                         <div
                           style={{
-                            fontSize: '16px',
-                            fontWeight: cell.isCurrentMonth ? 700 : 500,
-                            color: cell.isCurrentMonth
-                              ? today
-                                ? '#6b4fa1'
-                                : '#1f2937'
-                              : '#9ca3af',
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            justifyContent: 'space-between',
                             marginBottom: '8px',
                           }}
                         >
-                          {cell.day}
-                        </div>
-
-                        {holiday && (
-                          <>
-                            <div
-                              style={{
-                                fontSize: '12px',
-                                fontWeight: 800,
-                                color: '#78350f',
-                                background: '#fef08a',
-                                border: '1px solid #eab308',
-                                borderRadius: '5px',
-                                padding: '4px 6px',
-                                marginBottom: '8px',
-                                wordBreak: 'break-word',
-                                lineHeight: '1.4',
-                              }}
-                            >
-                              {holiday.holidayName}
-                            </div>
-
-                            <div
-                              style={{
-                                display: 'flex',
-                                gap: '4px',
-                                marginTop: 'auto',
-                              }}
-                            >
+                          <div
+                            style={{
+                              fontSize: '16px',
+                              fontWeight: cell.isCurrentMonth ? 700 : 500,
+                              color: cell.isCurrentMonth
+                                ? today
+                                  ? '#6b4fa1'
+                                  : '#1f2937'
+                                : '#9ca3af',
+                            }}
+                          >
+                            {cell.day}
+                          </div>
+                          {holiday && (
+                            <div style={{ display: 'flex', gap: '4px' }}>
                               <button
                                 onClick={() => handleEdit(holiday)}
-                                style={{
-                                  padding: '6px 8px',
-                                  fontSize: '12px',
-                                  flex: 1,
-                                  background: '#3b82f6',
-                                  color: '#fff',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                  fontWeight: 600,
-                                }}
+                                style={iconBtnStyle('#3b82f6')}
+                                title="Edit"
                               >
-                                <FaEdit
-                                  size={12}
-                                  style={{ marginRight: '4px' }}
-                                />
-                                Edit
+                                <FaEdit size={11} />
                               </button>
                               <button
                                 onClick={() => {
@@ -1515,26 +1549,32 @@ const CalendarMaster = () => {
                                   setDeleteHoliday(holiday)
                                   setShowDeleteModal(true)
                                 }}
-                                style={{
-                                  padding: '6px 8px',
-                                  fontSize: '12px',
-                                  flex: 1,
-                                  background: '#ef4444',
-                                  color: '#fff',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                  fontWeight: 600,
-                                }}
+                                style={iconBtnStyle('#ef4444')}
+                                title="Delete"
                               >
-                                <FaTrash
-                                  size={12}
-                                  style={{ marginRight: '4px' }}
-                                />
-                                Delete
+                                <FaTrash size={11} />
                               </button>
                             </div>
-                          </>
+                          )}
+                        </div>
+
+                        {holiday && (
+                          <div
+                            style={{
+                              fontSize: '12px',
+                              fontWeight: 800,
+                              color: '#78350f',
+                              background: '#fef08a',
+                              border: '1px solid #eab308',
+                              borderRadius: '5px',
+                              padding: '4px 6px',
+                              wordBreak: 'break-word',
+                              lineHeight: '1.4',
+                              marginTop: 'auto',
+                            }}
+                          >
+                            {holiday.holidayName}
+                          </div>
                         )}
                       </div>
                     )
@@ -1592,77 +1632,50 @@ const CalendarMaster = () => {
                       >
                         <div
                           style={{
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            color: '#6b7280',
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            justifyContent: 'space-between',
                             marginBottom: '4px',
                           }}
                         >
-                          {DAY_NAMES[d.getDay()]}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: '18px',
-                            fontWeight: 700,
-                            color: today ? '#6b4fa1' : '#1f2937',
-                            marginBottom: '8px',
-                          }}
-                        >
-                          {d.getDate()}{' '}
-                          <span
-                            style={{
-                              fontSize: '11px',
-                              fontWeight: 500,
-                              color: '#9ca3af',
-                            }}
-                          >
-                            {MONTHS[d.getMonth()].slice(0, 3)}
-                          </span>
-                        </div>
-
-                        {holiday ? (
-                          <>
+                          <div>
                             <div
                               style={{
-                                fontSize: '12px',
-                                fontWeight: 800,
-                                color: '#78350f',
-                                background: '#fef08a',
-                                border: '1px solid #eab308',
-                                borderRadius: '5px',
-                                padding: '4px 6px',
-                                marginBottom: '8px',
-                                wordBreak: 'break-word',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                color: '#6b7280',
+                                marginBottom: '2px',
                               }}
                             >
-                              {holiday.holidayName}
+                              {DAY_NAMES[d.getDay()]}
                             </div>
                             <div
                               style={{
-                                display: 'flex',
-                                gap: '4px',
-                                marginTop: 'auto',
+                                fontSize: '18px',
+                                fontWeight: 700,
+                                color: today ? '#6b4fa1' : '#1f2937',
                               }}
                             >
-                              <button
-                                onClick={() => handleEdit(holiday)}
+                              {d.getDate()}{' '}
+                              <span
                                 style={{
-                                  padding: '6px 8px',
                                   fontSize: '11px',
-                                  flex: 1,
-                                  background: '#3b82f6',
-                                  color: '#fff',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                  fontWeight: 600,
+                                  fontWeight: 500,
+                                  color: '#9ca3af',
                                 }}
                               >
-                                <FaEdit
-                                  size={11}
-                                  style={{ marginRight: '4px' }}
-                                />
-                                Edit
+                                {MONTHS[d.getMonth()].slice(0, 3)}
+                              </span>
+                            </div>
+                          </div>
+                          {holiday && (
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                              <button
+                                onClick={() => handleEdit(holiday)}
+                                style={iconBtnStyle('#3b82f6')}
+                                title="Edit"
+                              >
+                                <FaEdit size={11} />
                               </button>
                               <button
                                 onClick={() => {
@@ -1670,26 +1683,31 @@ const CalendarMaster = () => {
                                   setDeleteHoliday(holiday)
                                   setShowDeleteModal(true)
                                 }}
-                                style={{
-                                  padding: '6px 8px',
-                                  fontSize: '11px',
-                                  flex: 1,
-                                  background: '#ef4444',
-                                  color: '#fff',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                  fontWeight: 600,
-                                }}
+                                style={iconBtnStyle('#ef4444')}
+                                title="Delete"
                               >
-                                <FaTrash
-                                  size={11}
-                                  style={{ marginRight: '4px' }}
-                                />
-                                Delete
+                                <FaTrash size={11} />
                               </button>
                             </div>
-                          </>
+                          )}
+                        </div>
+
+                        {holiday ? (
+                          <div
+                            style={{
+                              fontSize: '12px',
+                              fontWeight: 800,
+                              color: '#78350f',
+                              background: '#fef08a',
+                              border: '1px solid #eab308',
+                              borderRadius: '5px',
+                              padding: '4px 6px',
+                              marginTop: 'auto',
+                              wordBreak: 'break-word',
+                            }}
+                          >
+                            {holiday.holidayName}
+                          </div>
                         ) : (
                           <div
                             style={{
@@ -1844,49 +1862,32 @@ const CalendarMaster = () => {
                                 textAlign: 'center',
                               }}
                             >
-                              <button
-                                onClick={() => handleEdit(holiday)}
+                              <div
                                 style={{
-                                  background: '#3b82f6',
-                                  color: '#fff',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  padding: '6px 12px',
-                                  cursor: 'pointer',
-                                  marginRight: '8px',
-                                  fontSize: '12px',
-                                  fontWeight: 600,
+                                  display: 'inline-flex',
+                                  gap: '6px',
+                                  alignItems: 'center',
                                 }}
                               >
-                                <FaEdit
-                                  size={12}
-                                  style={{ marginRight: '4px' }}
-                                />
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setDeleteId(holiday.id)
-                                  setDeleteHoliday(holiday)
-                                  setShowDeleteModal(true)
-                                }}
-                                style={{
-                                  background: '#ef4444',
-                                  color: '#fff',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  padding: '6px 12px',
-                                  cursor: 'pointer',
-                                  fontSize: '12px',
-                                  fontWeight: 600,
-                                }}
-                              >
-                                <FaTrash
-                                  size={12}
-                                  style={{ marginRight: '4px' }}
-                                />
-                                Delete
-                              </button>
+                                <button
+                                  onClick={() => handleEdit(holiday)}
+                                  style={iconBtnStyle('#3b82f6')}
+                                  title="Edit"
+                                >
+                                  <FaEdit size={11} />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setDeleteId(holiday.id)
+                                    setDeleteHoliday(holiday)
+                                    setShowDeleteModal(true)
+                                  }}
+                                  style={iconBtnStyle('#ef4444')}
+                                  title="Delete"
+                                >
+                                  <FaTrash size={11} />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
